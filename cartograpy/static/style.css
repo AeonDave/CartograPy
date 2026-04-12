@@ -1,0 +1,116 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, -apple-system, sans-serif; display: flex; height: 100vh; background: #f0f0f0; }
+
+/* ---- Side Panel ---- */
+#sidebar { width: 300px; min-width: 300px; background: #fff; display: flex; flex-direction: column;
+  box-shadow: 2px 0 6px rgba(0,0,0,.12); z-index: 1001; transition: margin-left .25s ease; overflow-y: auto; }
+#sidebar.collapsed { margin-left: -300px; }
+#sidebar h2 { font-size: 15px; padding: 10px 12px 6px; color: #1e293b; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 6px; }
+#sidebar h2 i { color: #64748b; }
+
+.panel-section { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; }
+.panel-section summary { font-size: 13px; font-weight: 600; color: #334155; cursor: pointer; padding: 4px 0;
+  list-style: none; display: flex; align-items: center; gap: 6px; }
+.panel-section summary::-webkit-details-marker { display: none; }
+.panel-section summary::before { content: '\f054'; font-family: 'Font Awesome 6 Free'; font-weight: 900;
+  font-size: 10px; color: #94a3b8; transition: transform .2s; display: inline-block; width: 14px; }
+.panel-section[open] summary::before { transform: rotate(90deg); }
+.panel-section .content { padding: 6px 0 2px; }
+
+.field { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+.field label { font-size: 12px; font-weight: 600; color: #475569; white-space: nowrap; min-width: 70px; }
+.field select, .field input[type="text"], .field input[type="number"] {
+  flex: 1; padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; }
+.field select { min-width: 0; }
+.field-full { flex-direction: column; align-items: stretch; }
+.field-full label { min-width: unset; }
+
+.btn { padding: 5px 12px; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; }
+.btn-sm { padding: 4px 8px; font-size: 11px; }
+.btn-primary { background: #2563eb; color: #fff; }
+.btn-primary:hover { background: #1d4ed8; }
+.btn-success { background: #059669; color: #fff; }
+.btn-success:hover { background: #047857; }
+.btn-success:disabled { background: #9ca3af; cursor: wait; }
+.btn-danger { background: #dc2626; color: #fff; }
+.btn-danger:hover { background: #b91c1c; }
+.btn-secondary { background: #e5e7eb; color: #333; }
+.btn-secondary:hover { background: #d1d5db; }
+.btn-tool { padding: 6px 10px; font-size: 12px; border: 2px solid transparent; background: #f1f5f9; border-radius: 6px;
+  cursor: pointer; display: flex; align-items: center; gap: 5px; }
+.btn-tool:hover { background: #e2e8f0; }
+.btn-tool.active { border-color: #2563eb; background: #eff6ff; color: #1d4ed8; }
+
+#toggleSidebar { position: absolute; top: 10px; left: 10px; z-index: 1002; width: 36px; height: 36px;
+  border: none; border-radius: 6px; background: #fff; box-shadow: 0 1px 5px rgba(0,0,0,.2);
+  cursor: pointer; font-size: 16px; color: #334155; display: flex; align-items: center; justify-content: center; }
+#toggleSidebar:hover { background: #f1f5f9; }
+body:not(.sidebar-hidden) #toggleSidebar { left: 310px; }
+
+/* ---- Main area ---- */
+#main { flex: 1; display: flex; flex-direction: column; position: relative; }
+#map { flex: 1; }
+#status { background: #1e293b; color: #94a3b8; padding: 4px 14px; font-size: 12px; }
+#results { display: none; background: #fff; border-bottom: 1px solid #ddd; padding: 4px 14px; }
+#results select { width: 100%; padding: 5px; font-size: 13px; }
+
+#crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px;
+  pointer-events: none; z-index: 800; }
+#crosshair::before, #crosshair::after { content: ''; position: absolute; background: rgba(220,40,40,.7); }
+#crosshair::before { width: 2px; height: 20px; left: 9px; }
+#crosshair::after  { width: 20px; height: 2px; top: 9px; }
+
+/* ---- Waypoint icon picker ---- */
+.icon-grid { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
+.icon-opt { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  border: 2px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: 16px; }
+.icon-opt:hover { border-color: #93c5fd; background: #eff6ff; }
+.icon-opt.selected { border-color: #2563eb; background: #dbeafe; }
+.color-opt { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid #e2e8f0; }
+.color-opt:hover { border-color: #666; }
+.color-opt.selected { border-color: #1e293b; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #1e293b; }
+
+/* ---- Ruler cursor ---- */
+.ruler-cursor { cursor: crosshair !important; }
+
+/* ---- Search autocomplete ---- */
+#searchSuggestions { display:none; background:#fff; border:1px solid #cbd5e1; border-top:none; border-radius:0 0 4px 4px;
+  max-height:180px; overflow-y:auto; margin-top:-2px; }
+#searchSuggestions .sg-item { padding:5px 8px; font-size:12px; cursor:pointer; border-bottom:1px solid #f1f5f9;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#searchSuggestions .sg-item:hover { background:#eff6ff; }
+
+/* ---- Search history ---- */
+.hist-list { max-height:160px; overflow-y:auto; margin:4px 0; }
+.hist-item { display:flex; align-items:center; gap:6px; padding:3px 4px; font-size:11px; cursor:pointer;
+  border-bottom:1px solid #f1f5f9; }
+.hist-item:hover { background:#f8fafc; }
+.hist-item .hist-name { flex:1; color:#334155; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hist-item .hist-del { cursor:pointer; color:#94a3b8; flex-shrink:0; }
+.hist-item .hist-del:hover { color:#dc2626; }
+
+/* ---- Waypoint list ---- */
+.wp-list { max-height: 200px; overflow-y: auto; margin: 4px 0; }
+.wp-item { display: flex; align-items: center; gap: 6px; padding: 3px 4px; font-size: 11px; border-bottom: 1px solid #f1f5f9; border-left: 3px solid transparent; cursor: pointer; }
+.wp-item.selected { background: #eff6ff; border-left-color: #2563eb; }
+.wp-item i { font-size: 14px; }
+.wp-item .wp-coords { flex: 1; color: #475569; }
+.wp-item .wp-del { cursor: pointer; color: #94a3b8; }
+.wp-item .wp-del:hover { color: #dc2626; }
+.wp-item .wp-name { flex:1; color:#334155; font-weight:600; cursor:text; border:1px solid transparent; border-radius:3px; padding:1px 3px; font-size:11px; }
+.wp-item .wp-name:hover { border-color:#cbd5e1; }
+.wp-item .wp-name:focus { outline:none; border-color:#2563eb; background:#eff6ff; }
+.wp-label { background:transparent !important; border:none !important; box-shadow:none !important;
+  font-size:11px; font-weight:700; padding:0 !important; white-space:nowrap; text-align:center;
+  color:#1a1a1a; text-shadow: -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff; }
+
+/* ---- Waypoint file list ---- */
+.wpf-item { display:flex; align-items:center; gap:6px; padding:4px 4px; font-size:12px; border-bottom:1px solid #f1f5f9; cursor:pointer; }
+.wpf-item:hover { background:#eff6ff; }
+.wpf-item .wpf-name { flex:1; color:#334155; font-weight:600; }
+.wpf-item .wpf-del { cursor:pointer; color:#94a3b8; font-size:11px; }
+.wpf-item .wpf-del:hover { color:#dc2626; }
+
+.grid-label { background: transparent !important; border: none !important; box-shadow: none !important;
+  color: #1e40af; font-size: 10px; font-weight: 600; padding: 0 !important; }
+.grid-label::before { display: none; }

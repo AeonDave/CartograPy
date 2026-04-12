@@ -1,0 +1,277 @@
+"""Tile downloading with on-disk cache and multiple sources."""
+from __future__ import annotations
+
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from io import BytesIO
+from pathlib import Path
+
+import requests
+from PIL import Image
+
+from .utils import TILE_SIZE
+
+# ---------------------------------------------------------------------------
+# Public tile servers (respect usage policies — cache aggressively)
+# ---------------------------------------------------------------------------
+TILE_SOURCES: dict[str, dict] = {
+    "OpenTopoMap": {
+        "url": "https://tile.opentopomap.org/{z}/{x}/{y}.png",
+        "attribution": "© OpenTopoMap (CC-BY-SA)",
+        "max_zoom": 17,
+    },
+    "OpenStreetMap": {
+        "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "attribution": "© OpenStreetMap contributors",
+        "max_zoom": 19,
+    },
+    "CyclOSM": {
+        "url": "https://a.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png",
+        "attribution": "© CyclOSM — © OSM contributors",
+        "max_zoom": 19,
+    },
+    "OSM DE": {
+        "url": "https://tile.openstreetmap.de/{z}/{x}/{y}.png",
+        "attribution": "© OpenStreetMap contributors",
+        "max_zoom": 18,
+    },
+    "OSM France": {
+        "url": "https://a.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png",
+        "attribution": "© OpenStreetMap France — © OSM contributors",
+        "max_zoom": 20,
+    },
+    "OSM HOT": {
+        "url": "https://a.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
+        "attribution": "© Humanitarian OSM Team — © OSM contributors",
+        "max_zoom": 19,
+    },
+    "Esri WorldStreetMap": {
+        "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+        "attribution": "© Esri",
+        "max_zoom": 19,
+    },
+    "Esri WorldTopoMap": {
+        "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
+        "attribution": "© Esri",
+        "max_zoom": 19,
+    },
+    "Esri WorldImagery": {
+        "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        "attribution": "© Esri",
+        "max_zoom": 19,
+    },
+    "CartoDB Positron": {
+        "url": "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+        "attribution": "© OSM contributors © CARTO",
+        "max_zoom": 20,
+    },
+    "CartoDB Voyager": {
+        "url": "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+        "attribution": "© OSM contributors © CARTO",
+        "max_zoom": 20,
+    },
+    "CartoDB Dark": {
+        "url": "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+        "attribution": "© OSM contributors © CARTO",
+        "max_zoom": 20,
+    },
+    "TopPlusOpen": {
+        "url": "https://sgx.geodatenzentrum.de/wmts_topplus_open/tile/1.0.0/web/default/WEBMERCATOR/{z}/{y}/{x}.png",
+        "attribution": "© dl-de/by-2-0",
+        "max_zoom": 18,
+    },
+    "BaseMap DE": {
+        "url": "https://sgx.geodatenzentrum.de/wmts_basemapde/tile/1.0.0/de_basemapde_web_raster_farbe/default/GLOBAL_WEBMERCATOR/{z}/{y}/{x}.png",
+        "attribution": "© dl-de/by-2-0",
+        "max_zoom": 18,
+    },
+    "GeoportailFrance": {
+        "url": "https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",
+        "attribution": "© Geoportail France",
+        "max_zoom": 18,
+    },
+    "GeoportailFrance Ortho": {
+        "url": "https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",
+        "attribution": "© Geoportail France",
+        "max_zoom": 19,
+    },
+    "Swisstopo": {
+        "url": "https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-farbe/default/current/3857/{z}/{x}/{y}.jpeg",
+        "attribution": "© swisstopo",
+        "max_zoom": 18,
+    },
+    "Swisstopo Satellite": {
+        "url": "https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage/default/current/3857/{z}/{x}/{y}.jpeg",
+        "attribution": "© swisstopo",
+        "max_zoom": 19,
+    },
+    "BasemapAT": {
+        "url": "https://mapsneu.wien.gv.at/basemap/geolandbasemap/normal/google3857/{z}/{y}/{x}.png",
+        "attribution": "© basemap.at",
+        "max_zoom": 20,
+    },
+    "BasemapAT Ortho": {
+        "url": "https://mapsneu.wien.gv.at/basemap/bmaporthofoto30cm/normal/google3857/{z}/{y}/{x}.jpeg",
+        "attribution": "© basemap.at",
+        "max_zoom": 20,
+    },
+    "NL Kadaster": {
+        "url": "https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/standaard/EPSG:3857/{z}/{x}/{y}.png",
+        "attribution": "© Kadaster",
+        "max_zoom": 19,
+    },
+    "USGS Topo": {
+        "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
+        "attribution": "© USGS",
+        "max_zoom": 20,
+    },
+    "USGS Imagery": {
+        "url": "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}",
+        "attribution": "© USGS",
+        "max_zoom": 20,
+    },
+    "WaymarkedTrails Hiking": {
+        "url": "https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png",
+        "attribution": "© waymarkedtrails.org (CC-BY-SA)",
+        "max_zoom": 18,
+        "overlay": True,
+    },
+    "OpenRailwayMap": {
+        "url": "https://a.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png",
+        "attribution": "© OpenRailwayMap (CC-BY-SA)",
+        "max_zoom": 19,
+        "overlay": True,
+    },
+    "OPNVKarte": {
+        "url": "https://tileserver.memomaps.de/tilegen/{z}/{x}/{y}.png",
+        "attribution": "© memomaps.de (CC-BY-SA)",
+        "max_zoom": 18,
+    },
+}
+
+_PLACEHOLDER: Image.Image | None = None
+
+
+def _placeholder() -> Image.Image:
+    global _PLACEHOLDER
+    if _PLACEHOLDER is None:
+        _PLACEHOLDER = Image.new("RGB", (TILE_SIZE, TILE_SIZE), (220, 220, 220))
+    return _PLACEHOLDER.copy()
+
+
+class TileCache:
+    """Thread-safe tile fetcher with a two-level cache (memory + disk)."""
+
+    def __init__(self, cache_dir: Path | None = None, workers: int = 6) -> None:
+        if cache_dir is None:
+            cache_dir = Path.home() / ".cartograpy" / "tiles"
+        self.cache_dir = Path(cache_dir)
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+
+        self._session = requests.Session()
+        self._session.headers["User-Agent"] = "CartograPy/1.0 (map-printing tool; educational)"
+        self._mem: dict[tuple, Image.Image] = {}
+        self._lock = threading.Lock()
+        self._pool = ThreadPoolExecutor(max_workers=workers)
+
+    # ------------------------------------------------------------------
+    # Public
+    # ------------------------------------------------------------------
+
+    def get_tile(self, source: str, z: int, x: int, y: int) -> Image.Image:
+        """Return tile image (blocking). Serves from memory → disk → network."""
+        key = (source, z, x, y)
+        with self._lock:
+            if key in self._mem:
+                return self._mem[key]
+
+        # Disk
+        path = self._disk_path(source, z, x, y)
+        if path.exists():
+            try:
+                img = Image.open(path).convert("RGB")
+                with self._lock:
+                    self._mem[key] = img
+                return img
+            except Exception:
+                pass
+
+        # Network
+        img = self._download(source, z, x, y)
+        with self._lock:
+            self._mem[key] = img
+        return img
+
+    def get_tile_async(
+        self,
+        source: str,
+        z: int,
+        x: int,
+        y: int,
+        callback=None,
+    ) -> Image.Image | None:
+        """Non-blocking fetch. Returns image if cached, else ``None`` and
+        calls *callback(key, image)* from a worker thread when ready."""
+        key = (source, z, x, y)
+        with self._lock:
+            if key in self._mem:
+                return self._mem[key]
+
+        # Check disk quickly
+        path = self._disk_path(source, z, x, y)
+        if path.exists():
+            try:
+                img = Image.open(path).convert("RGB")
+                with self._lock:
+                    self._mem[key] = img
+                return img
+            except Exception:
+                pass
+
+        # Submit network fetch
+        def _task():
+            img = self._download(source, z, x, y)
+            with self._lock:
+                self._mem[key] = img
+            if callback:
+                callback(key, img)
+
+        self._pool.submit(_task)
+        return None
+
+    def get_area(
+        self, source: str, z: int, x_min: int, y_min: int, x_max: int, y_max: int,
+    ) -> Image.Image:
+        """Composite tiles in a rectangle (blocking download)."""
+        cols = x_max - x_min + 1
+        rows = y_max - y_min + 1
+        result = Image.new("RGB", (cols * TILE_SIZE, rows * TILE_SIZE))
+        for tx in range(x_min, x_max + 1):
+            for ty in range(y_min, y_max + 1):
+                tile = self.get_tile(source, z, tx, ty)
+                result.paste(tile, ((tx - x_min) * TILE_SIZE, (ty - y_min) * TILE_SIZE))
+        return result
+
+    # ------------------------------------------------------------------
+    # Internal
+    # ------------------------------------------------------------------
+
+    def _disk_path(self, source: str, z: int, x: int, y: int) -> Path:
+        return self.cache_dir / source / str(z) / str(x) / f"{y}.png"
+
+    def _download(self, source: str, z: int, x: int, y: int) -> Image.Image:
+        src = TILE_SOURCES.get(source)
+        if src is None:
+            return _placeholder()
+        url = src["url"].format(z=z, x=x, y=y)
+        try:
+            resp = self._session.get(url, timeout=15)
+            resp.raise_for_status()
+            img = Image.open(BytesIO(resp.content)).convert("RGB")
+            # persist to disk
+            path = self._disk_path(source, z, x, y)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            img.save(path, "PNG")
+            return img
+        except Exception:
+            return _placeholder()

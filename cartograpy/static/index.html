@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CartograPy — Print Maps to Scale</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+<link rel="stylesheet" href="/style.css"/>
+</head>
+<body>
+
+<!-- ============ SIDEBAR ============ -->
+<div id="sidebar">
+  <h2><i class="fa-solid fa-map"></i> CartograPy</h2>
+
+  <!-- Language -->
+  <div style="padding: 4px 12px; border-bottom: 1px solid #e5e7eb;">
+    <div class="field">
+      <label data-i18n="label.language">Language:</label>
+      <select id="language">
+        <option value="en">English</option>
+        <option value="it">Italiano</option>
+        <option value="zh">中文</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Search -->
+  <details class="panel-section" open>
+    <summary><i class="fa-solid fa-magnifying-glass"></i> <span data-i18n="section.search">Search place</span></summary>
+    <div class="content">
+      <div class="field">
+        <input type="text" id="search" placeholder="e.g. Cortina d'Ampezzo" data-i18n-placeholder="placeholder.search" style="flex:1" autocomplete="off">
+        <button class="btn btn-primary btn-sm" id="btnSearch"><i class="fa-solid fa-search"></i></button>
+      </div>
+      <div id="searchSuggestions"></div>
+      <div id="results"><select id="resultsList"></select></div>
+      <!-- History -->
+      <div id="historySection" style="display:none;">
+        <div style="font-size:11px; font-weight:600; color:#64748b; margin:6px 0 2px;"><i class="fa-solid fa-clock-rotate-left"></i> <span data-i18n="wp.history">History:</span></div>
+        <div class="hist-list" id="histList"></div>
+      </div>
+    </div>
+  </details>
+
+  <!-- Map / Print settings -->
+  <details class="panel-section" open>
+    <summary><i class="fa-solid fa-print"></i> <span data-i18n="section.print">Print</span></summary>
+    <div class="content">
+      <div class="field">
+        <label data-i18n="label.scale">Scale 1 :</label>
+        <input type="number" id="scale" value="25000" min="1000" max="500000" step="1000">
+      </div>
+      <div class="field">
+        <label data-i18n="label.paper">Paper:</label>
+        <select id="paper">
+          <option value="A4">A4</option><option value="A3">A3</option>
+          <option value="A2">A2</option><option value="A1">A1</option>
+          <option value="Letter">Letter</option><option value="Legal">Legal</option>
+        </select>
+      </div>
+      <div class="field">
+        <label data-i18n="label.sheets">Sheets:</label>
+        <input type="number" id="sheets" value="1" min="1" max="20" step="1" style="width:60px">
+      </div>
+      <div class="field">
+        <label data-i18n="label.orientation">Orientation:</label>
+        <label style="min-width:unset"><input type="checkbox" id="landscape"> <span data-i18n="label.landscape">Landscape</span></label>
+      </div>
+      <div class="field">
+        <label data-i18n="label.source">Source:</label>
+        <select id="source">
+          <optgroup label="── Global ──" data-i18n-label="source.global">
+          <option value="OpenTopoMap">OpenTopoMap</option>
+          <option value="OpenStreetMap">OpenStreetMap</option>
+          <option value="CyclOSM">CyclOSM</option>
+          <option value="OSM DE">OSM DE</option>
+          <option value="OSM France">OSM France</option>
+          <option value="OSM HOT" data-i18n="source.osmHot">OSM HOT (Humanitarian)</option>
+          <option value="OPNVKarte" data-i18n="source.opnvkarte">OPNVKarte (Transit)</option>
+          </optgroup>
+          <optgroup label="── Esri ──" data-i18n-label="source.esri">
+          <option value="Esri WorldStreetMap" data-i18n="source.esriStreets">Esri Streets</option>
+          <option value="Esri WorldTopoMap" data-i18n="source.esriTopo">Esri Topo</option>
+          <option value="Esri WorldImagery" data-i18n="source.esriSatellite">Esri Satellite</option>
+          </optgroup>
+          <optgroup label="── CartoDB ──" data-i18n-label="source.cartodb">
+          <option value="CartoDB Positron" data-i18n="source.cartodbLight">CartoDB Positron (light)</option>
+          <option value="CartoDB Voyager">CartoDB Voyager</option>
+          <option value="CartoDB Dark">CartoDB Dark</option>
+          </optgroup>
+          <optgroup label="── Regional ──" data-i18n-label="source.regional">
+          <option value="TopPlusOpen">TopPlusOpen (DE)</option>
+          <option value="BaseMap DE">BaseMap DE</option>
+          <option value="GeoportailFrance">Géoportail France</option>
+          <option value="GeoportailFrance Ortho" data-i18n="source.geopFrOrtho">Géoportail Ortho</option>
+          <option value="Swisstopo">Swisstopo (CH)</option>
+          <option value="Swisstopo Satellite">Swisstopo Satellite</option>
+          <option value="BasemapAT">BasemapAT (Austria)</option>
+          <option value="BasemapAT Ortho" data-i18n="source.basemapAtOrtho">BasemapAT Ortho</option>
+          <option value="NL Kadaster">NL Kadaster</option>
+          <option value="USGS Topo">USGS Topo (USA)</option>
+          <option value="USGS Imagery">USGS Imagery (USA)</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="field">
+        <label data-i18n="label.dpi">DPI:</label>
+        <select id="dpi">
+          <option value="150">150</option><option value="200">200</option>
+          <option value="300" selected>300</option><option value="600">600</option>
+        </select>
+      </div>
+      <div class="field">
+        <label data-i18n="label.mapTextScale">Map text %:</label>
+        <input type="number" id="mapTextScale" value="50" min="1" max="100" step="1">
+      </div>
+    </div>
+  </details>
+
+  <!-- Grid -->
+  <details class="panel-section" open>
+    <summary><i class="fa-solid fa-border-all"></i> <span data-i18n="section.grid">Grid</span></summary>
+    <div class="content">
+      <div class="field">
+        <label data-i18n="label.gridType">Type:</label>
+        <select id="gridType">
+          <option value="none" data-i18n="grid.none">No grid</option>
+          <option value="utm" selected>UTM</option>
+          <option value="latlon">Lat/Lon (auto DD/DM/DMS)</option>
+          <option value="mgrs">MGRS</option>
+          <option value="gauss_boaga" data-i18n="grid.gaussBoaga">Gauss-Boaga (Italy)</option>
+          <option value="swiss">Swiss CH1903+ / LV95</option>
+          <option value="bng">British National Grid</option>
+          <option value="dutch">Dutch RD New</option>
+          <option value="gauss_krueger">German Gauss-Krüger</option>
+          <option value="irish_ig">Irish Grid</option>
+          <option value="irish_itm">Irish Transverse Mercator</option>
+          <option value="eov">Hungarian EOV</option>
+          <option value="kkj">Finnish KKJ</option>
+          <option value="nztm">New Zealand TM</option>
+          <option value="sweref99">Swedish SWEREF 99 TM</option>
+          <option value="rt90">Swedish RT90</option>
+          <option value="south_african">South African Lo29</option>
+          <option value="taiwan">Taiwan TWD97 / TM2</option>
+          <option value="qng">Qatar National Grid</option>
+        </select>
+      </div>
+      <div class="field" id="gridScaleGroup">
+        <label data-i18n="label.gridScale">Scale %:</label>
+        <input type="number" id="gridScale" value="50" min="1" max="100" step="1">
+      </div>
+      <div class="field" id="fullLabelsGroup">
+        <label style="min-width:unset"><input type="checkbox" id="fullLabels"> <span data-i18n="label.fullLabels">Full labels</span></label>
+      </div>
+    </div>
+  </details>
+
+  <!-- Tools -->
+  <details class="panel-section" open>
+    <summary><i class="fa-solid fa-screwdriver-wrench"></i> <span data-i18n="section.tools">Tools</span></summary>
+    <div class="content">
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <button class="btn-tool" id="btnRuler"><i class="fa-solid fa-ruler"></i> <span data-i18n="btn.ruler">Ruler</span></button>
+        <button class="btn-tool" id="btnProtractor"><i class="fa-solid fa-drafting-compass"></i> <span data-i18n="btn.protractor">Protractor</span></button>
+        <button class="btn-tool" id="btnLine"><i class="fa-solid fa-ruler-horizontal"></i> <span data-i18n="btn.line">Line tool</span></button>
+        <button class="btn-tool" id="btnCompass"><i class="fa-regular fa-circle"></i> <span data-i18n="btn.compass">Compass</span></button>
+      </div>
+      <!-- Active tool info (only one visible at a time) -->
+      <div id="rulerInfo" style="display:none; margin-top:6px; font-size:12px; color:#475569;">
+        <p><i class="fa-solid fa-circle-info"></i> <span data-i18n="tool.ruler.info">Click two points on the map to measure distance.</span></p>
+        <div id="rulerResult" style="font-weight:700; font-size:14px; color:#1e293b; margin-top:4px;"></div>
+      </div>
+      <div id="protractorInfo" style="display:none; margin-top:6px; font-size:12px; color:#475569;">
+        <p><i class="fa-solid fa-circle-info"></i> <span data-i18n="tool.protractor.info">Click 3 points: first arm → vertex → second arm.</span></p>
+        <div id="protractorResult" style="font-weight:700; font-size:14px; color:#1e293b; margin-top:4px;"></div>
+      </div>
+      <div id="lineInfo" style="display:none; margin-top:6px; font-size:12px; color:#475569;">
+        <p><i class="fa-solid fa-circle-info"></i> <span data-i18n="tool.line.info">Click points to draw segments. Double-click to finish.</span></p>
+        <div id="lineResult" style="font-weight:700; font-size:14px; color:#1e293b; margin-top:4px;"></div>
+      </div>
+      <button class="btn btn-sm btn-secondary" id="btnLineUndo" style="display:none; margin-top:4px;"><span data-i18n="btn.undoLast">Undo last</span></button>
+      <div id="compassInfo" style="display:none; margin-top:6px; font-size:12px; color:#475569;">
+        <p><i class="fa-solid fa-circle-info"></i> <span data-i18n="tool.compass.info">Click center, then move for radius. Click to fix.</span></p>
+        <div id="compassResult" style="font-weight:700; font-size:14px; color:#1e293b; margin-top:4px;"></div>
+      </div>
+      <!-- All tool histories -->
+      <div id="toolHistorySep" style="display:none; margin-top:8px; border-top:1px solid #e2e8f0; padding-top:4px;"></div>
+      <div id="rulerHistory"></div>
+      <div id="protractorHistory" style="margin-top:4px;"></div>
+      <div id="lineHistory" style="margin-top:4px;"></div>
+      <div id="compassHistory" style="margin-top:4px;"></div>
+      <!-- Tool file management -->
+      <div style="margin-top:8px; padding-top:6px; border-top:1px solid #e2e8f0;">
+        <label style="font-size:11px; font-weight:600; color:#64748b; display:flex; align-items:center; gap:4px; cursor:pointer;">
+          <input type="checkbox" id="chkSnapWp"> <span data-i18n="tool.snapWp">Snap to waypoints</span>
+        </label>
+        <label style="font-size:11px; font-weight:600; color:#64748b; display:flex; align-items:center; gap:4px; cursor:pointer;">
+          <input type="checkbox" id="chkToolsInPdf" checked> <span data-i18n="tool.exportPdf">Include tools in PDF</span>
+        </label>
+        <div style="display:flex; gap:4px; margin-top:6px;">
+          <button class="btn btn-sm btn-primary" id="btnToolSave" style="flex:1;">
+            <i class="fa-solid fa-floppy-disk"></i> <span data-i18n="btn.save">Save</span>
+          </button>
+          <button class="btn btn-sm btn-secondary" id="btnToolLoad" style="flex:1;">
+            <i class="fa-solid fa-folder-open"></i> <span data-i18n="btn.load">Load</span>
+          </button>
+          <button class="btn btn-sm btn-danger" id="btnToolClearAll" style="flex:0 0 auto;">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+        <div id="toolFilePanel" style="display:none; margin-top:6px; padding:6px; border:1px solid #cbd5e1; border-radius:4px; background:#f8fafc;">
+          <div id="toolSavePanel" style="display:none;">
+            <div style="font-size:11px; font-weight:600; color:#475569; margin-bottom:3px;" data-i18n="tool.fileName">File name:</div>
+            <div class="field">
+              <input type="text" id="toolFileName" placeholder="e.g. Lake Trip" data-i18n-placeholder="placeholder.wpName" style="flex:1; font-size:11px;">
+              <button class="btn btn-sm btn-success" id="btnToolSaveConfirm"><i class="fa-solid fa-check"></i></button>
+            </div>
+          </div>
+          <div id="toolLoadPanel" style="display:none;">
+            <div style="font-size:11px; font-weight:600; color:#475569; margin-bottom:3px;" data-i18n="tool.savedFiles">Saved files:</div>
+            <div id="toolFileList" style="max-height:150px; overflow-y:auto;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <!-- Waypoints -->
+  <details class="panel-section" id="waypointSection">
+    <summary><i class="fa-solid fa-location-dot"></i> <span data-i18n="section.waypoints">Waypoints</span></summary>
+    <div class="content">
+      <!-- Add on map toggle -->
+      <button class="btn btn-sm btn-tool" id="btnWpAddOnMap" style="width:100%; margin-bottom:6px;">
+        <i class="fa-solid fa-map-pin"></i> <span data-i18n="btn.addOnMap">Add on map</span>
+      </button>
+      <!-- Icon picker -->
+      <div style="font-size:11px; font-weight:600; color:#64748b; margin-bottom:2px;" data-i18n="wp.icon">Icon:</div>
+      <div class="icon-grid" id="iconGrid"></div>
+      <!-- Color picker -->
+      <div style="font-size:11px; font-weight:600; color:#64748b; margin:4px 0 2px;" data-i18n="wp.color">Color:</div>
+      <div style="display:flex; gap:5px; flex-wrap:wrap;" id="colorGrid"></div>
+      <!-- Manual coordinate entry -->
+      <div style="font-size:11px; font-weight:600; color:#64748b; margin:8px 0 2px;"><span data-i18n="wp.enterCoords">Enter coordinates</span> (<span id="wpDatumLabel">UTM</span>):</div>
+      <div class="field">
+        <input type="text" id="wpCoordInput" placeholder="e.g. 32T 581392 5082439" data-i18n-placeholder="placeholder.wpCoord" style="flex:1; font-size:11px;">
+        <button class="btn btn-primary btn-sm" id="btnWpAdd" data-i18n-title="wp.addSingle" title="Add single"><i class="fa-solid fa-plus"></i></button>
+      </div>
+      <!-- Bulk import -->
+      <details style="margin-top:4px;">
+        <summary style="font-size:11px; font-weight:600; color:#64748b; cursor:pointer;"><i class="fa-solid fa-list"></i> <span data-i18n="wp.bulkTitle">Import multiple (one per line)</span></summary>
+        <textarea id="wpBulkInput" rows="5" placeholder="32T 581392 5082439&#10;32T 580436 5082486&#10;32T 580382 5083219" style="width:100%; font-size:11px; font-family:monospace; margin-top:4px; padding:4px; border:1px solid #cbd5e1; border-radius:4px; resize:vertical;"></textarea>
+        <button class="btn btn-primary btn-sm" id="btnWpBulk" style="margin-top:4px; width:100%;"><i class="fa-solid fa-file-import"></i> <span data-i18n="btn.importAll">Import all</span></button>
+      </details>
+      <!-- Waypoint list -->
+      <div style="font-size:11px; font-weight:600; color:#64748b; margin:6px 0 2px;" data-i18n="wp.list">Waypoint list:</div>
+      <div class="wp-list" id="wpList"></div>
+      <button class="btn btn-sm btn-danger" id="btnWpClearAll" style="margin-top:4px; width:100%;">
+        <i class="fa-solid fa-trash"></i> <span data-i18n="btn.clearAll">Clear all</span>
+      </button>
+      <div style="display:flex; gap:4px; margin-top:4px;">
+        <button class="btn btn-sm btn-primary" id="btnWpSave" style="flex:1;">
+          <i class="fa-solid fa-floppy-disk"></i> <span data-i18n="btn.save">Save</span>
+        </button>
+        <button class="btn btn-sm btn-secondary" id="btnWpLoad" style="flex:1;">
+          <i class="fa-solid fa-folder-open"></i> <span data-i18n="btn.load">Load</span>
+        </button>
+      </div>
+      <div id="wpFilePanel" style="display:none; margin-top:6px; padding:6px; border:1px solid #cbd5e1; border-radius:4px; background:#f8fafc;">
+        <div id="wpSavePanel" style="display:none;">
+          <div style="font-size:11px; font-weight:600; color:#475569; margin-bottom:3px;" data-i18n="wp.fileName">File name:</div>
+          <div class="field">
+            <input type="text" id="wpFileName" placeholder="e.g. Lake Trip" data-i18n-placeholder="placeholder.wpName" style="flex:1; font-size:11px;">
+            <button class="btn btn-sm btn-success" id="btnWpSaveConfirm"><i class="fa-solid fa-check"></i></button>
+          </div>
+        </div>
+        <div id="wpLoadPanel" style="display:none;">
+          <div style="font-size:11px; font-weight:600; color:#475569; margin-bottom:3px;" data-i18n="wp.savedFiles">Saved files:</div>
+          <div id="wpFileList" style="max-height:150px; overflow-y:auto;"></div>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <!-- Export button at bottom -->
+  <div style="padding: 10px 12px; margin-top: auto; border-top: 1px solid #e5e7eb;">
+    <button class="btn btn-success" id="btnExport" style="width:100%; padding:10px; font-size:14px;">
+      <i class="fa-solid fa-file-pdf"></i> <span data-i18n="btn.export">Export PDF</span>
+    </button>
+  </div>
+</div>
+
+<!-- ============ TOGGLE BUTTON ============ -->
+<button id="toggleSidebar"><i class="fa-solid fa-bars"></i></button>
+
+<!-- ============ MAIN MAP ============ -->
+<div id="main">
+  <div id="map"><div id="crosshair"></div></div>
+  <div id="status" data-i18n="status.ready">Ready — drag the map, then export the PDF</div>
+</div>
+
+<script src="/app.js"></script>
+
+</body>
+</html>

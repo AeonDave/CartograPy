@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.mypy_cache/
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.idea/
+
+# Backup files
+*.zip
+*.rar
+*.bak
+
+# Playwright MCP
+.playwright-mcp/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# User data (auto-generated at runtime)
+data/*
+
