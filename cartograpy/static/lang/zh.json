@@ -138,5 +138,22 @@
   "msg.toolsSaved": "\u5de5\u5177\u5df2\u4fdd\u5b58",
   "msg.toolsLoaded": "\u5df2\u4ece\u201c{1}\u201d\u52a0\u8f7d {0} \u4e2a\u7ed8\u56fe",
   "msg.toolsCleared": "\u6240\u6709\u5de5\u5177\u5df2\u6e05\u9664",
-  "btn.addOnMap": "\u5728\u5730\u56fe\u4e0a\u6dfb\u52a0"
+  "btn.addOnMap": "\u5728\u5730\u56fe\u4e0a\u6dfb\u52a0",
+
+  "weather.title": "\u5929\u6c14",
+  "weather.feelsLike": "\u4f53\u611f",
+  "weather.humidity": "\u6e7f\u5ea6",
+  "weather.precProb": "\u964d\u96e8\u6982\u7387",
+  "weather.precMm": "\u964d\u6c34\u91cf",
+  "weather.wind": "\u98ce\u901f",
+  "weather.gusts": "\u9635\u98ce",
+  "weather.clear": "\u6674\u6717",
+  "weather.cloudy": "\u591a\u4e91",
+  "weather.overcast": "\u9634\u5929",
+  "weather.fog": "\u96fe",
+  "weather.drizzle": "\u6bdb\u6bdb\u96e8",
+  "weather.rain": "\u96e8",
+  "weather.heavyrain": "\u5927\u96e8",
+  "weather.snow": "\u96ea",
+  "weather.storm": "\u96f7\u66b4"
 }

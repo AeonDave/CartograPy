@@ -138,5 +138,22 @@
   "msg.toolsSaved": "Tools saved",
   "msg.toolsLoaded": "Loaded {0} drawings from \"{1}\"",
   "msg.toolsCleared": "All tools cleared",
-  "btn.addOnMap": "Add on map"
+  "btn.addOnMap": "Add on map",
+
+  "weather.title": "Weather",
+  "weather.feelsLike": "Feels like",
+  "weather.humidity": "Humidity",
+  "weather.precProb": "Rain prob.",
+  "weather.precMm": "Precip.",
+  "weather.wind": "Wind",
+  "weather.gusts": "Gusts",
+  "weather.clear": "Clear",
+  "weather.cloudy": "Partly cloudy",
+  "weather.overcast": "Overcast",
+  "weather.fog": "Fog",
+  "weather.drizzle": "Drizzle",
+  "weather.rain": "Rain",
+  "weather.heavyrain": "Heavy rain",
+  "weather.snow": "Snow",
+  "weather.storm": "Thunderstorm"
 }

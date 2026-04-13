@@ -138,5 +138,22 @@
   "msg.toolsSaved": "Strumenti salvati",
   "msg.toolsLoaded": "Caricati {0} disegni da \"{1}\"",
   "msg.toolsCleared": "Tutti gli strumenti cancellati",
-  "btn.addOnMap": "Aggiungi sulla mappa"
+  "btn.addOnMap": "Aggiungi sulla mappa",
+
+  "weather.title": "Meteo",
+  "weather.feelsLike": "Percepita",
+  "weather.humidity": "Umidità",
+  "weather.precProb": "Prob. pioggia",
+  "weather.precMm": "Precip.",
+  "weather.wind": "Vento",
+  "weather.gusts": "Raffiche",
+  "weather.clear": "Sereno",
+  "weather.cloudy": "Parzialm. nuvoloso",
+  "weather.overcast": "Coperto",
+  "weather.fog": "Nebbia",
+  "weather.drizzle": "Pioggerella",
+  "weather.rain": "Pioggia",
+  "weather.heavyrain": "Pioggia forte",
+  "weather.snow": "Neve",
+  "weather.storm": "Temporale"
 }

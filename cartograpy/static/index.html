@@ -298,6 +298,33 @@
 <!-- ============ MAIN MAP ============ -->
 <div id="main">
   <div id="map"><div id="crosshair"></div></div>
+  <!-- Weather widget -->
+  <div id="weatherCard">
+    <div id="weatherHeader">
+      <i class="fa-solid fa-cloud-sun"></i>
+      <span data-i18n="weather.title">Weather</span>
+      <button id="weatherClose" title="Close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div id="weatherDateRow">
+      <input type="date" id="weatherDate">
+    </div>
+    <div id="weatherBody">
+      <div id="weatherIcon"></div>
+      <div id="weatherMain">
+        <div id="weatherTemp"></div>
+        <div id="weatherFeelsLike"></div>
+        <div id="weatherLabel"></div>
+      </div>
+    </div>
+    <div id="weatherStats"></div>
+    <div id="weatherBarSection">
+      <div id="weatherBar"></div>
+      <div id="weatherBarLabels">
+        <span>00</span><span>06</span><span>12</span><span>18</span><span>24</span>
+      </div>
+    </div>
+    <div id="weatherLegend"></div>
+  </div>
   <div id="status" data-i18n="status.ready">Ready — drag the map, then export the PDF</div>
 </div>
 

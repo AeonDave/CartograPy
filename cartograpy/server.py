@@ -20,8 +20,10 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+import urllib.request
+
 from .export import export_map_pdf
-from .geocoder import geocode
+from .geocoder import autocomplete, geocode
 from .grid import GRID_SYSTEMS, compute_grid
 from .tiles import TileCache
 from .utils import PAPER_SIZES, SCALES, auto_grid_spacing
@@ -222,6 +224,8 @@ class _Handler(BaseHTTPRequestHandler):
             self._serve_file(_STATIC / "index.html", "text/html; charset=utf-8")
         elif path == "/api/search":
             self._handle_search(qs)
+        elif path == "/api/suggest":
+            self._handle_suggest(qs)
         elif path == "/api/grid":
             self._handle_grid(qs)
         elif path == "/api/constants":
@@ -238,6 +242,8 @@ class _Handler(BaseHTTPRequestHandler):
             self._handle_tools_list()
         elif path.startswith("/api/tools/load"):
             self._handle_tools_load(qs)
+        elif path == "/api/weather":
+            self._handle_weather(qs)
         elif path.startswith("/lang/") and path.endswith(".json"):
             lang_file = _STATIC / "lang" / Path(path[6:]).name
             self._serve_file(lang_file, "application/json; charset=utf-8")
@@ -279,6 +285,18 @@ class _Handler(BaseHTTPRequestHandler):
             return
         try:
             results = geocode(q)
+            self._json([{"name": r.name, "lat": r.lat, "lon": r.lon} for r in results])
+        except Exception as exc:
+            self._json({"error": str(exc)}, 502)
+
+    def _handle_suggest(self, qs):
+        q = qs.get("q", [""])[0]
+        lang = qs.get("lang", ["en"])[0]
+        if not q:
+            self._json({"error": "missing q"}, 400)
+            return
+        try:
+            results = autocomplete(q, lang=lang)
             self._json([{"name": r.name, "lat": r.lat, "lon": r.lon} for r in results])
         except Exception as exc:
             self._json({"error": str(exc)}, 502)
@@ -374,6 +392,42 @@ class _Handler(BaseHTTPRequestHandler):
             self._json({"lat": lat, "lon": lon})
         except Exception as exc:
             self._json({"error": str(exc)}, 400)
+
+    def _handle_weather(self, qs):
+        """Proxy hourly weather forecast from Open-Meteo (free, no API key)."""
+        try:
+            lat = float(qs["lat"][0])
+            lon = float(qs["lon"][0])
+            date = qs.get("date", [""])[0].strip()
+        except (KeyError, ValueError, IndexError):
+            self._json({"error": "missing lat/lon"}, 400)
+            return
+
+        # Build Open-Meteo URL
+        params = (
+            f"latitude={lat}&longitude={lon}"
+            f"&hourly=temperature_2m,apparent_temperature,weathercode"
+            f",relativehumidity_2m,precipitation_probability"
+            f",precipitation,windspeed_10m,windgusts_10m"
+            f",winddirection_10m,uv_index"
+            f"&timezone=auto"
+        )
+        if date:
+            params += f"&start_date={date}&end_date={date}"
+        else:
+            params += "&forecast_days=1"
+
+        url = f"https://api.open-meteo.com/v1/forecast?{params}"
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "CartograPy/1.0 (weather-widget)"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read().decode())
+            self._json(data)
+        except Exception as exc:
+            self._json({"error": str(exc)}, 502)
 
     # -- Config persistence -----------------------------------------------
 

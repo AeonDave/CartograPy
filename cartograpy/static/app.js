@@ -291,11 +291,14 @@ function goToPlace(name, lat, lon) {
     searchHistory.unshift({ name: short, lat, lon });
   if (searchHistory.length > 30) searchHistory.pop();
   renderHistory();
+  // Weather widget
+  _weatherLat = lat; _weatherLon = lon;
+  if (typeof fetchWeather === 'function') fetchWeather(lat, lon);
 }
 
 async function fetchSuggestions(q) {
   try {
-    const res = await fetch('/api/search?q=' + encodeURIComponent(q));
+    const res = await fetch('/api/suggest?q=' + encodeURIComponent(q) + '&lang=' + encodeURIComponent(_currentLang));
     const data = await res.json();
     if (data.error || !data.length) { hideSuggestions(); return; }
     const box = document.getElementById('searchSuggestions');
@@ -1706,4 +1709,234 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#search') && !e.target.closest('#searchSuggestions')) hideSuggestions();
 });
 renderWaypointList();
+
+// ==============================================================
+// Weather Widget
+// ==============================================================
+const $weatherCard = document.getElementById('weatherCard');
+const $weatherDate = document.getElementById('weatherDate');
+const $weatherIcon = document.getElementById('weatherIcon');
+const $weatherTemp = document.getElementById('weatherTemp');
+const $weatherLabel = document.getElementById('weatherLabel');
+const $weatherBar = document.getElementById('weatherBar');
+const $weatherLegend = document.getElementById('weatherLegend');
+
+let _weatherLat = null, _weatherLon = null;
+
+// Set date picker range: today → +14 days (Open-Meteo limit)
+(function initWeatherDate() {
+  const today = new Date();
+  const max = new Date(today); max.setDate(today.getDate() + 14);
+  const fmt = d => d.toISOString().slice(0, 10);
+  $weatherDate.min = fmt(today);
+  $weatherDate.max = fmt(max);
+  $weatherDate.value = fmt(today);
+})();
+
+$weatherDate.addEventListener('change', () => {
+  if (_weatherLat !== null) fetchWeather(_weatherLat, _weatherLon);
+});
+document.getElementById('weatherClose').addEventListener('click', () => {
+  $weatherCard.classList.remove('visible');
+});
+
+// Weather code → category mapping
+const WMO = {
+  0:  { cat: 'clear',   en: 'Clear sky' },
+  1:  { cat: 'clear',   en: 'Mainly clear' },
+  2:  { cat: 'cloudy',  en: 'Partly cloudy' },
+  3:  { cat: 'overcast',en: 'Overcast' },
+  45: { cat: 'fog',     en: 'Fog' },
+  48: { cat: 'fog',     en: 'Rime fog' },
+  51: { cat: 'drizzle', en: 'Light drizzle' },
+  53: { cat: 'drizzle', en: 'Drizzle' },
+  55: { cat: 'drizzle', en: 'Dense drizzle' },
+  56: { cat: 'drizzle', en: 'Freezing drizzle' },
+  57: { cat: 'drizzle', en: 'Heavy freezing drizzle' },
+  61: { cat: 'rain',    en: 'Light rain' },
+  63: { cat: 'rain',    en: 'Rain' },
+  65: { cat: 'heavyrain',en: 'Heavy rain' },
+  66: { cat: 'rain',    en: 'Freezing rain' },
+  67: { cat: 'heavyrain',en: 'Heavy freezing rain' },
+  71: { cat: 'snow',    en: 'Light snow' },
+  73: { cat: 'snow',    en: 'Snow' },
+  75: { cat: 'snow',    en: 'Heavy snow' },
+  77: { cat: 'snow',    en: 'Snow grains' },
+  80: { cat: 'rain',    en: 'Light showers' },
+  81: { cat: 'rain',    en: 'Showers' },
+  82: { cat: 'heavyrain',en: 'Violent showers' },
+  85: { cat: 'snow',    en: 'Snow showers' },
+  86: { cat: 'snow',    en: 'Heavy snow showers' },
+  95: { cat: 'storm',   en: 'Thunderstorm' },
+  96: { cat: 'storm',   en: 'Thunderstorm + hail' },
+  99: { cat: 'storm',   en: 'Severe thunderstorm' },
+};
+
+const CAT_COLOR = {
+  clear:    '#fbbf24',
+  cloudy:   '#d1d5db',
+  overcast: '#9ca3af',
+  fog:      '#c4b5a0',
+  drizzle:  '#93c5fd',
+  rain:     '#3b82f6',
+  heavyrain:'#1d4ed8',
+  snow:     '#bfdbfe',
+  storm:    '#7c3aed',
+};
+
+const CAT_LABEL_KEYS = {
+  clear: 'weather.clear', cloudy: 'weather.cloudy', overcast: 'weather.overcast',
+  fog: 'weather.fog', drizzle: 'weather.drizzle', rain: 'weather.rain',
+  heavyrain: 'weather.heavyrain', snow: 'weather.snow', storm: 'weather.storm',
+};
+
+// SVG icons for main display
+function weatherSVG(cat) {
+  const sun = `<circle cx="28" cy="28" r="10" fill="#fbbf24" stroke="#f59e0b" stroke-width="1.5"/>
+    <g stroke="#fbbf24" stroke-width="2" stroke-linecap="round">
+      <line x1="28" y1="10" x2="28" y2="14"/><line x1="28" y1="42" x2="28" y2="46"/>
+      <line x1="10" y1="28" x2="14" y2="28"/><line x1="42" y1="28" x2="46" y2="28"/>
+      <line x1="15.3" y1="15.3" x2="18.1" y2="18.1"/><line x1="37.9" y1="37.9" x2="40.7" y2="40.7"/>
+      <line x1="15.3" y1="40.7" x2="18.1" y2="37.9"/><line x1="37.9" y1="18.1" x2="40.7" y2="15.3"/>
+    </g>`;
+  const cloud = `<path d="M16 36 Q10 36 10 30 Q10 25 15 24 Q16 18 23 18 Q28 18 30 22
+    Q32 20 36 20 Q42 20 42 26 Q46 26 46 31 Q46 36 40 36 Z" fill="#e2e8f0" stroke="#94a3b8" stroke-width="1"/>`;
+  const cloudDark = cloud.replace('#e2e8f0','#94a3b8').replace('#94a3b8" stroke-width','#64748b" stroke-width');
+  const rain = `<line x1="22" y1="40" x2="20" y2="46" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+    <line x1="30" y1="40" x2="28" y2="46" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
+    <line x1="38" y1="40" x2="36" y2="46" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>`;
+  const snowflakes = `<text x="20" y="46" font-size="8" fill="#60a5fa">❄</text>
+    <text x="32" y="46" font-size="8" fill="#60a5fa">❄</text>`;
+  const bolt = `<polygon points="30,34 26,42 32,42 28,52" fill="#fbbf24" stroke="#f59e0b" stroke-width="0.5"/>`;
+  const fog_lines = `<line x1="12" y1="38" x2="44" y2="38" stroke="#a8a29e" stroke-width="2" stroke-linecap="round" opacity=".6"/>
+    <line x1="16" y1="42" x2="40" y2="42" stroke="#a8a29e" stroke-width="2" stroke-linecap="round" opacity=".4"/>
+    <line x1="14" y1="46" x2="42" y2="46" stroke="#a8a29e" stroke-width="2" stroke-linecap="round" opacity=".3"/>`;
+
+  const svgs = {
+    clear:    `<svg viewBox="0 0 56 56">${sun}</svg>`,
+    cloudy:   `<svg viewBox="0 0 56 56"><g transform="translate(-4,-6) scale(.7)">${sun}</g>${cloud}</svg>`,
+    overcast: `<svg viewBox="0 0 56 56">${cloudDark}</svg>`,
+    fog:      `<svg viewBox="0 0 56 56">${cloud}${fog_lines}</svg>`,
+    drizzle:  `<svg viewBox="0 0 56 56">${cloud}<line x1="26" y1="40" x2="24" y2="44" stroke="#93c5fd" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="34" y1="40" x2="32" y2="44" stroke="#93c5fd" stroke-width="1.5" stroke-linecap="round"/></svg>`,
+    rain:     `<svg viewBox="0 0 56 56">${cloudDark}${rain}</svg>`,
+    heavyrain:`<svg viewBox="0 0 56 56">${cloudDark}${rain}
+      <line x1="26" y1="42" x2="24" y2="48" stroke="#1d4ed8" stroke-width="2" stroke-linecap="round"/></svg>`,
+    snow:     `<svg viewBox="0 0 56 56">${cloud}${snowflakes}</svg>`,
+    storm:    `<svg viewBox="0 0 56 56">${cloudDark}${bolt}${rain}</svg>`,
+  };
+  return svgs[cat] || svgs.cloudy;
+}
+
+async function fetchWeather(lat, lon) {
+  const date = $weatherDate.value;
+  let url = `/api/weather?lat=${lat}&lon=${lon}`;
+  if (date) url += `&date=${date}`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    renderWeather(data);
+    $weatherCard.classList.add('visible');
+  } catch (e) {
+    console.error('Weather fetch error:', e);
+  }
+}
+
+// Wind direction → arrow character
+function windArrow(deg) {
+  const arrows = ['↓','↙','←','↖','↑','↗','→','↘'];
+  return arrows[Math.round(deg / 45) % 8];
+}
+
+function renderWeather(data) {
+  const hrs = data.hourly || {};
+  const temps = hrs.temperature_2m || [];
+  const codes = hrs.weathercode || [];
+  const feels = hrs.apparent_temperature || [];
+  const humid = hrs.relativehumidity_2m || [];
+  const precProb = hrs.precipitation_probability || [];
+  const precMm = hrs.precipitation || [];
+  const windSpd = hrs.windspeed_10m || [];
+  const windGust = hrs.windgusts_10m || [];
+  const windDir = hrs.winddirection_10m || [];
+  const uvIdx = hrs.uv_index || [];
+  if (!temps.length) return;
+
+  const avg = arr => arr.length ? arr.reduce((a,b) => a+b, 0) / arr.length : 0;
+  const max = arr => arr.length ? Math.max(...arr) : 0;
+
+  // Main temp + feels like
+  const avgTemp = Math.round(avg(temps));
+  const avgFeels = Math.round(avg(feels));
+  $weatherTemp.textContent = `${avgTemp}°C`;
+  const $feelsLike = document.getElementById('weatherFeelsLike');
+  if ($feelsLike) $feelsLike.textContent = feels.length
+    ? `${t('weather.feelsLike')} ${avgFeels}°C` : '';
+
+  // Most common category for the main icon
+  const catCount = {};
+  codes.forEach(c => {
+    const cat = (WMO[c] || WMO[2]).cat;
+    catCount[cat] = (catCount[cat] || 0) + 1;
+  });
+  const mainCat = Object.entries(catCount).sort((a,b) => b[1]-a[1])[0][0];
+  $weatherIcon.innerHTML = weatherSVG(mainCat);
+  $weatherLabel.textContent = t(CAT_LABEL_KEYS[mainCat] || 'weather.cloudy');
+
+  // Stats grid
+  const $stats = document.getElementById('weatherStats');
+  if ($stats) {
+    const maxPrec = Math.round(max(precProb));
+    const totalMm = precMm.reduce((a,b) => a+b, 0).toFixed(1);
+    const avgHumid = Math.round(avg(humid));
+    const avgWind = Math.round(avg(windSpd));
+    const maxGust = Math.round(max(windGust));
+    const avgDir = Math.round(avg(windDir));
+    const maxUv = Math.round(max(uvIdx) * 10) / 10;
+    const minT = Math.round(Math.min(...temps));
+    const maxT = Math.round(Math.max(...temps));
+
+    $stats.innerHTML = `
+      <div class="ws-item"><i class="fa-solid fa-droplet"></i> ${t('weather.humidity')} <span class="ws-val">${avgHumid}%</span></div>
+      <div class="ws-item"><i class="fa-solid fa-umbrella"></i> ${t('weather.precProb')} <span class="ws-val">${maxPrec}%</span></div>
+      <div class="ws-item"><i class="fa-solid fa-cloud-rain"></i> ${t('weather.precMm')} <span class="ws-val">${totalMm} mm</span></div>
+      <div class="ws-item"><i class="fa-solid fa-wind"></i> ${t('weather.wind')} <span class="ws-val">${avgWind} km/h ${windArrow(avgDir)}</span></div>
+      <div class="ws-item"><i class="fa-solid fa-wind"></i> ${t('weather.gusts')} <span class="ws-val">${maxGust} km/h</span></div>
+      <div class="ws-item"><i class="fa-solid fa-sun"></i> UV <span class="ws-val">${maxUv}</span></div>
+      <div class="ws-item"><i class="fa-solid fa-temperature-arrow-down"></i> Min <span class="ws-val">${minT}°C</span></div>
+      <div class="ws-item"><i class="fa-solid fa-temperature-arrow-up"></i> Max <span class="ws-val">${maxT}°C</span></div>
+    `;
+  }
+
+  // 24h bar
+  $weatherBar.innerHTML = '';
+  const usedCats = new Set();
+  const n = Math.min(codes.length, 24);
+  for (let i = 0; i < n; i++) {
+    const wmo = WMO[codes[i]] || WMO[2];
+    const cat = wmo.cat;
+    usedCats.add(cat);
+    const el = document.createElement('div');
+    el.className = 'wh';
+    el.style.background = CAT_COLOR[cat];
+    const h = String(i).padStart(2, '0') + ':00';
+    let tip = `${h} — ${t(CAT_LABEL_KEYS[cat])}`;
+    if (temps[i] !== undefined) tip += ` ${Math.round(temps[i])}°C`;
+    if (precProb[i] !== undefined) tip += ` ☔${precProb[i]}%`;
+    if (windSpd[i] !== undefined) tip += ` 💨${Math.round(windSpd[i])} km/h`;
+    el.dataset.tip = tip;
+    $weatherBar.appendChild(el);
+  }
+
+  // Legend (only used categories)
+  $weatherLegend.innerHTML = '';
+  usedCats.forEach(cat => {
+    const d = document.createElement('div');
+    d.className = 'wleg';
+    d.innerHTML = `<span class="wleg-dot" style="background:${CAT_COLOR[cat]}"></span>${t(CAT_LABEL_KEYS[cat])}`;
+    $weatherLegend.appendChild(d);
+  });
+}
+
 loadLanguage('en').then(() => loadConfig().then(() => setTimeout(updateOverlays, 500)));
