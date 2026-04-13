@@ -116,7 +116,7 @@ def _parse_latlon_auto(raw: str) -> tuple[float, float]:
     if len(nums) >= 2:
         return nums[0], nums[1]
 
-    raise ValueError("Formato lat/lon non riconosciuto")
+    raise ValueError("Unrecognized lat/lon format")
 
 
 # EPSG lookup for simple projected grids
@@ -147,7 +147,9 @@ def _parse_coords(grid_type: str, raw: str) -> tuple[float, float]:
         # Formats: "32T 581392 5082439" or "32 T 581392 5082439"
         m = re.match(r"(\d{1,2})\s*([A-Za-z])\s+([\d.]+)\s+([\d.]+)", raw)
         if not m:
-            raise ValueError("Formato UTM: zona banda est nord  (es. 32T 581392 5082439)")
+            raise ValueError(
+                "UTM format: zone band easting northing (e.g. 32T 581392 5082439)"
+            )
         zone_num, band, easting, northing = int(m[1]), m[2].upper(), float(m[3]), float(m[4])
         south = band < 'N'
         epsg = 32600 + zone_num if not south else 32700 + zone_num
@@ -163,12 +165,12 @@ def _parse_coords(grid_type: str, raw: str) -> tuple[float, float]:
             return lat, lon
         except ImportError:
             pass
-        raise ValueError("MGRS richiede il pacchetto 'mgrs'. Installa con: pip install mgrs")
+        raise ValueError("MGRS requires the 'mgrs' package. Install it with: pip install mgrs")
 
     if grid_type == "gauss_boaga":
         parts = raw.split()
         if len(parts) < 2:
-            raise ValueError("Formato: est nord  (es. 1681392 5082439)")
+            raise ValueError("Format: easting northing (e.g. 1681392 5082439)")
         e, n = float(parts[0]), float(parts[1])
         epsg = 3003 if e < 2520000 else 3004
         t = Transformer.from_crs(f"EPSG:{epsg}", "EPSG:4326", always_xy=True)
@@ -178,7 +180,7 @@ def _parse_coords(grid_type: str, raw: str) -> tuple[float, float]:
     if grid_type == "gauss_krueger":
         parts = raw.split()
         if len(parts) < 2:
-            raise ValueError("Formato: rechts hoch  (es. 3581392 5082439)")
+            raise ValueError("Format: easting northing (e.g. 3581392 5082439)")
         e, n = float(parts[0]), float(parts[1])
         # Auto-detect zone from Rechtswert leading digit
         zone_digit = int(e / 1_000_000)
@@ -191,7 +193,7 @@ def _parse_coords(grid_type: str, raw: str) -> tuple[float, float]:
     if grid_type in _SIMPLE_EPSG:
         parts = raw.split()
         if len(parts) < 2:
-            raise ValueError("Formato: easting northing")
+            raise ValueError("Format: easting northing")
         e, n = float(parts[0]), float(parts[1])
         epsg = _SIMPLE_EPSG[grid_type]
         t = Transformer.from_crs(f"EPSG:{epsg}", "EPSG:4326", always_xy=True)
@@ -441,7 +443,8 @@ class _Handler(BaseHTTPRequestHandler):
         # sanitize: only accept known keys
         allowed = {"scale", "paper", "landscape", "source", "dpi",
                    "mapTextScale", "gridType", "gridScale", "fullLabels",
-                   "lat", "lon", "zoom", "language", "sheets"}
+                   "lat", "lon", "zoom", "language", "sheets",
+                   "owmApiKey", "searchHistory"}
         clean = {k: v for k, v in params.items() if k in allowed}
         _CONFIG_FILE.write_text(json.dumps(clean, ensure_ascii=False, indent=2), "utf-8")
         self._json({"ok": True})
@@ -573,7 +576,7 @@ class _Handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "application/pdf")
             self.send_header("Content-Disposition",
-                             f'attachment; filename="mappa_{scale}_{paper}.pdf"')
+                             f'attachment; filename="map_{scale}_{paper}.pdf"')
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             self.wfile.write(data)
@@ -620,10 +623,10 @@ def run_server(host: str = "127.0.0.1", port: int = 8271) -> None:
     server = HTTPServer((host, port), handler_cls)
     url = f"http://{host}:{port}"
     print(f"CartograPy server: {url}")
-    print("Premi Ctrl+C per chiudere.\n")
+    print("Press Ctrl+C to stop.\n")
     threading.Timer(0.8, lambda: webbrowser.open(url)).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\nServer fermato.")
+        print("\nServer stopped.")
         server.server_close()

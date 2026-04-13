@@ -24,9 +24,11 @@ waypoints, and measurement tools — all exportable and printable at 100 %.
 - **Measurement tools** — ruler (distance), protractor (angle), polyline (cumulative distance), compass (radius); results displayed live and drawn on the PDF
 - **Tool & waypoint files** — save and load sets of drawings and waypoints as named JSON files
 - **PDF export** — paper formats A4, A3, A2, A1, Letter, Legal; portrait or landscape; 150–600 DPI; grid, waypoints and tools rendered on every page
+- **Weather widget** — hourly forecast from Open-Meteo with clickable 24 h bar, temperature, precipitation, wind, humidity, cloud cover, and "Now" indicator
+- **Weather overlays** — real-time radar via RainViewer (no key required); clouds, precipitation, temperature, wind, and pressure tiles via OpenWeatherMap (free API key)
 - **Multi-language UI** — English, Italian, Chinese; add new languages by dropping a JSON file
 - **Tile cache** — downloaded tiles stored on disk; no repeated network requests
-- **Geocoding** — place search via OpenStreetMap Nominatim with history
+- **Smart search** — prefix autocomplete via Photon while typing; full geocoding via Nominatim on Enter; last 10 searches persisted across sessions
 
 ![CartograPy](img/tools.png)
 

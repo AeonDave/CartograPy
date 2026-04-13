@@ -60,11 +60,11 @@ class GridInfo:
 # ------------------------------------------------------------------
 
 GRID_SYSTEMS: dict[str, str] = {
-    "none":          "Nessuna griglia",
+    "none":          "No grid",
     "utm":           "UTM",
     "latlon":        "Lat/Lon (auto DD/DM/DMS)",
     "mgrs":          "MGRS",
-    "gauss_boaga":   "Gauss-Boaga (Italia)",
+    "gauss_boaga":   "Gauss-Boaga (Italy)",
     "swiss":         "Swiss CH1903+ / LV95",
     "bng":           "British National Grid",
     "dutch":         "Dutch RD New",
@@ -432,10 +432,10 @@ def _compute_projected_grid(
 # ==================================================================
 
 def _gauss_boaga_epsg(lon: float) -> tuple[int, str]:
-    """Pick fuso Ovest (EPSG 3003) or Est (EPSG 3004)."""
+    """Pick West zone (EPSG 3003) or East zone (EPSG 3004)."""
     if lon < 12.0:
-        return 3003, "Fuso Ovest"
-    return 3004, "Fuso Est"
+        return 3003, "West zone"
+    return 3004, "East zone"
 
 
 def compute_gauss_boaga_grid(

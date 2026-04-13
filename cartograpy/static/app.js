@@ -289,8 +289,9 @@ function goToPlace(name, lat, lon) {
   const short = name.substring(0, 80);
   if (!searchHistory.some(h => h.name === short && Math.abs(h.lat - lat) < 0.0001))
     searchHistory.unshift({ name: short, lat, lon });
-  if (searchHistory.length > 30) searchHistory.pop();
+  if (searchHistory.length > 10) searchHistory.pop();
   renderHistory();
+  scheduleSaveConfig();
   // Weather widget
   _weatherLat = lat; _weatherLon = lon;
   if (typeof fetchWeather === 'function') fetchWeather(lat, lon);
@@ -348,6 +349,7 @@ function renderHistory() {
       ev.stopPropagation();
       searchHistory.splice(parseInt(el.dataset.idx), 1);
       renderHistory();
+      scheduleSaveConfig();
     });
   });
 }
@@ -1496,6 +1498,7 @@ const CONFIG_FIELDS = {
   gridScale: {el: () => $gridScale, type: 'value'},
   fullLabels: {el: () => $fullLabels, type: 'checked'},
   language: {el: () => document.getElementById('language'), type: 'value'},
+  owmApiKey: {el: () => document.getElementById('owmApiKey'), type: 'value'},
 };
 
 function gatherConfig() {
@@ -1504,6 +1507,7 @@ function gatherConfig() {
   for (const [k, def] of Object.entries(CONFIG_FIELDS)) {
     cfg[k] = def.el()[def.type];
   }
+  cfg.searchHistory = searchHistory.slice(0, 10);
   return cfg;
 }
 
@@ -1537,6 +1541,14 @@ async function loadConfig() {
     if (tileLayers[src]) tileLayers[src].addTo(map);
     // Load language
     await loadLanguage(document.getElementById('language').value || 'en');
+    // Restore search history
+    if (Array.isArray(cfg.searchHistory)) {
+      searchHistory = cfg.searchHistory.slice(0, 10);
+      renderHistory();
+    }
+    // Sync OWM key UI state
+    showOwmState();
+    populateWeatherLayers();
   } catch(e) {}
 }
 
@@ -1550,9 +1562,72 @@ $sheets.addEventListener('input', scheduleSaveConfig);
 });
 map.on('moveend', scheduleSaveConfig);
 
+// OWM API key — validate, toggle input/badge states
+const $owmHidden = document.getElementById('owmApiKey');
+const $owmInput = document.getElementById('owmKeyInput');
+const $owmBadge = document.getElementById('owmKeyBadge');
+const $owmField = document.getElementById('owmKeyField');
+const $owmError = document.getElementById('owmKeyError');
+
+function showOwmState() {
+  const hasKey = !!$owmHidden.value.trim();
+  $owmInput.style.display = hasKey ? 'none' : '';
+  $owmBadge.style.display = hasKey ? '' : 'none';
+  $owmError.textContent = '';
+  $owmError.style.display = 'none';
+}
+
+async function validateOwmKey(key) {
+  try {
+    const res = await fetch(
+      `https://api.openweathermap.org/data/2.5/weather?q=London&appid=${encodeURIComponent(key)}`
+    );
+    return res.ok; // 200 = valid, 401 = invalid
+  } catch {
+    return false;
+  }
+}
+
+document.getElementById('owmKeyConfirm').addEventListener('click', async () => {
+  const key = $owmField.value.trim();
+  if (!key) return;
+  // Show spinner/disabled state
+  const btn = document.getElementById('owmKeyConfirm');
+  btn.disabled = true;
+  $owmError.style.display = 'none';
+  const ok = await validateOwmKey(key);
+  btn.disabled = false;
+  if (ok) {
+    $owmHidden.value = key;
+    $owmField.value = '';
+    showOwmState();
+    populateWeatherLayers();
+    scheduleSaveConfig();
+  } else {
+    $owmError.textContent = t('label.owmInvalidKey');
+    $owmError.style.display = 'block';
+  }
+});
+
+// Allow Enter in the field to confirm
+$owmField.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    document.getElementById('owmKeyConfirm').click();
+  }
+});
+
+document.getElementById('owmKeyDelete').addEventListener('click', () => {
+  $owmHidden.value = '';
+  showOwmState();
+  populateWeatherLayers();
+  scheduleSaveConfig();
+});
+
 // Language change
 document.getElementById('language').addEventListener('change', async () => {
   await loadLanguage(document.getElementById('language').value);
+  populateWeatherLayers();
   scheduleSaveConfig();
 });
 
@@ -1720,8 +1795,17 @@ const $weatherTemp = document.getElementById('weatherTemp');
 const $weatherLabel = document.getElementById('weatherLabel');
 const $weatherBar = document.getElementById('weatherBar');
 const $weatherLegend = document.getElementById('weatherLegend');
+const $weatherOverlay = document.getElementById('weatherOverlay');
+const $weatherLayer = document.getElementById('weatherLayer');
+const $weatherOverlayMsg = document.getElementById('weatherOverlayMsg');
+const $weatherHourIndicator = document.getElementById('weatherHourIndicator');
+const $weatherNowIndicator = document.getElementById('weatherNowIndicator');
 
 let _weatherLat = null, _weatherLon = null;
+let _selectedHour = null; // null = day summary, 0-23 = specific hour
+let _lastWeatherData = null; // cached for re-render on hour click
+let _weatherOverlayLayer = null; // current Leaflet overlay layer
+let _rainviewerTimestamps = null; // cached RainViewer data
 
 // Set date picker range: today → +14 days (Open-Meteo limit)
 (function initWeatherDate() {
@@ -1734,10 +1818,21 @@ let _weatherLat = null, _weatherLon = null;
 })();
 
 $weatherDate.addEventListener('change', () => {
+  _selectedHour = null;
   if (_weatherLat !== null) fetchWeather(_weatherLat, _weatherLon);
+  validateWeatherOverlay();
 });
 document.getElementById('weatherClose').addEventListener('click', () => {
   $weatherCard.classList.remove('visible');
+});
+
+// "Now" button — reset date to today and hour to current
+document.getElementById('weatherNow').addEventListener('click', () => {
+  const today = new Date().toISOString().slice(0, 10);
+  $weatherDate.value = today;
+  _selectedHour = new Date().getHours();
+  if (_weatherLat !== null) fetchWeather(_weatherLat, _weatherLon);
+  validateWeatherOverlay();
 });
 
 // Weather code → category mapping
@@ -1836,6 +1931,7 @@ async function fetchWeather(lat, lon) {
     const res = await fetch(url);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
+    _lastWeatherData = data;
     renderWeather(data);
     $weatherCard.classList.add('visible');
   } catch (e) {
@@ -1866,50 +1962,79 @@ function renderWeather(data) {
   const avg = arr => arr.length ? arr.reduce((a,b) => a+b, 0) / arr.length : 0;
   const max = arr => arr.length ? Math.max(...arr) : 0;
 
-  // Main temp + feels like
-  const avgTemp = Math.round(avg(temps));
-  const avgFeels = Math.round(avg(feels));
-  $weatherTemp.textContent = `${avgTemp}°C`;
-  const $feelsLike = document.getElementById('weatherFeelsLike');
-  if ($feelsLike) $feelsLike.textContent = feels.length
-    ? `${t('weather.feelsLike')} ${avgFeels}°C` : '';
+  // Determine display mode: hour detail vs day summary
+  const h = _selectedHour;
+  const isHour = h !== null && h >= 0 && h < temps.length;
 
-  // Most common category for the main icon
-  const catCount = {};
-  codes.forEach(c => {
-    const cat = (WMO[c] || WMO[2]).cat;
-    catCount[cat] = (catCount[cat] || 0) + 1;
-  });
-  const mainCat = Object.entries(catCount).sort((a,b) => b[1]-a[1])[0][0];
-  $weatherIcon.innerHTML = weatherSVG(mainCat);
-  $weatherLabel.textContent = t(CAT_LABEL_KEYS[mainCat] || 'weather.cloudy');
+  if (isHour) {
+    // Hour-specific display
+    const hTemp = Math.round(temps[h]);
+    const hFeels = Math.round(feels[h] || temps[h]);
+    $weatherTemp.textContent = `${hTemp}°C`;
+    const $feelsLike = document.getElementById('weatherFeelsLike');
+    if ($feelsLike) $feelsLike.textContent = `${t('weather.feelsLike')} ${hFeels}°C`;
+
+    const hCat = (WMO[codes[h]] || WMO[2]).cat;
+    $weatherIcon.innerHTML = weatherSVG(hCat);
+    $weatherLabel.textContent = `${String(h).padStart(2,'0')}:00 — ${t(CAT_LABEL_KEYS[hCat] || 'weather.cloudy')}`;
+  } else {
+    // Day summary (original)
+    const avgTemp = Math.round(avg(temps));
+    const avgFeels = Math.round(avg(feels));
+    $weatherTemp.textContent = `${avgTemp}°C`;
+    const $feelsLike = document.getElementById('weatherFeelsLike');
+    if ($feelsLike) $feelsLike.textContent = feels.length
+      ? `${t('weather.feelsLike')} ${avgFeels}°C` : '';
+
+    // Most common category for the main icon
+    const catCount = {};
+    codes.forEach(c => {
+      const cat = (WMO[c] || WMO[2]).cat;
+      catCount[cat] = (catCount[cat] || 0) + 1;
+    });
+    const mainCat = Object.entries(catCount).sort((a,b) => b[1]-a[1])[0][0];
+    $weatherIcon.innerHTML = weatherSVG(mainCat);
+    $weatherLabel.textContent = t(CAT_LABEL_KEYS[mainCat] || 'weather.cloudy');
+  }
 
   // Stats grid
   const $stats = document.getElementById('weatherStats');
   if ($stats) {
-    const maxPrec = Math.round(max(precProb));
-    const totalMm = precMm.reduce((a,b) => a+b, 0).toFixed(1);
-    const avgHumid = Math.round(avg(humid));
-    const avgWind = Math.round(avg(windSpd));
-    const maxGust = Math.round(max(windGust));
-    const avgDir = Math.round(avg(windDir));
-    const maxUv = Math.round(max(uvIdx) * 10) / 10;
-    const minT = Math.round(Math.min(...temps));
-    const maxT = Math.round(Math.max(...temps));
+    let sHumid, sPrec, sMm, sWind, sGust, sDir, sUv, sMinT, sMaxT;
+    if (isHour) {
+      sHumid = humid[h] !== undefined ? Math.round(humid[h]) : '—';
+      sPrec = precProb[h] !== undefined ? Math.round(precProb[h]) : '—';
+      sMm = precMm[h] !== undefined ? precMm[h].toFixed(1) : '—';
+      sWind = windSpd[h] !== undefined ? Math.round(windSpd[h]) : '—';
+      sGust = windGust[h] !== undefined ? Math.round(windGust[h]) : '—';
+      sDir = windDir[h] !== undefined ? Math.round(windDir[h]) : 0;
+      sUv = uvIdx[h] !== undefined ? Math.round(uvIdx[h] * 10) / 10 : '—';
+      sMinT = Math.round(temps[h]); sMaxT = sMinT;
+    } else {
+      sHumid = Math.round(avg(humid));
+      sPrec = Math.round(max(precProb));
+      sMm = precMm.reduce((a,b) => a+b, 0).toFixed(1);
+      sWind = Math.round(avg(windSpd));
+      sGust = Math.round(max(windGust));
+      sDir = Math.round(avg(windDir));
+      sUv = Math.round(max(uvIdx) * 10) / 10;
+      sMinT = Math.round(Math.min(...temps));
+      sMaxT = Math.round(Math.max(...temps));
+    }
 
     $stats.innerHTML = `
-      <div class="ws-item"><i class="fa-solid fa-droplet"></i> ${t('weather.humidity')} <span class="ws-val">${avgHumid}%</span></div>
-      <div class="ws-item"><i class="fa-solid fa-umbrella"></i> ${t('weather.precProb')} <span class="ws-val">${maxPrec}%</span></div>
-      <div class="ws-item"><i class="fa-solid fa-cloud-rain"></i> ${t('weather.precMm')} <span class="ws-val">${totalMm} mm</span></div>
-      <div class="ws-item"><i class="fa-solid fa-wind"></i> ${t('weather.wind')} <span class="ws-val">${avgWind} km/h ${windArrow(avgDir)}</span></div>
-      <div class="ws-item"><i class="fa-solid fa-wind"></i> ${t('weather.gusts')} <span class="ws-val">${maxGust} km/h</span></div>
-      <div class="ws-item"><i class="fa-solid fa-sun"></i> UV <span class="ws-val">${maxUv}</span></div>
-      <div class="ws-item"><i class="fa-solid fa-temperature-arrow-down"></i> Min <span class="ws-val">${minT}°C</span></div>
-      <div class="ws-item"><i class="fa-solid fa-temperature-arrow-up"></i> Max <span class="ws-val">${maxT}°C</span></div>
+      <div class="ws-item"><i class="fa-solid fa-droplet"></i> ${t('weather.humidity')} <span class="ws-val">${sHumid}%</span></div>
+      <div class="ws-item"><i class="fa-solid fa-umbrella"></i> ${t('weather.precProb')} <span class="ws-val">${sPrec}%</span></div>
+      <div class="ws-item"><i class="fa-solid fa-cloud-rain"></i> ${t('weather.precMm')} <span class="ws-val">${sMm} mm</span></div>
+      <div class="ws-item"><i class="fa-solid fa-wind"></i> ${t('weather.wind')} <span class="ws-val">${sWind} km/h ${windArrow(sDir)}</span></div>
+      <div class="ws-item"><i class="fa-solid fa-wind"></i> ${t('weather.gusts')} <span class="ws-val">${sGust} km/h</span></div>
+      <div class="ws-item"><i class="fa-solid fa-sun"></i> UV <span class="ws-val">${sUv}</span></div>
+      <div class="ws-item"><i class="fa-solid fa-temperature-arrow-down"></i> Min <span class="ws-val">${sMinT}°C</span></div>
+      <div class="ws-item"><i class="fa-solid fa-temperature-arrow-up"></i> Max <span class="ws-val">${sMaxT}°C</span></div>
     `;
   }
 
-  // 24h bar
+  // 24h bar (clickable)
   $weatherBar.innerHTML = '';
   const usedCats = new Set();
   const n = Math.min(codes.length, 24);
@@ -1918,7 +2043,7 @@ function renderWeather(data) {
     const cat = wmo.cat;
     usedCats.add(cat);
     const el = document.createElement('div');
-    el.className = 'wh';
+    el.className = 'wh' + (_selectedHour === i ? ' selected' : '');
     el.style.background = CAT_COLOR[cat];
     const h = String(i).padStart(2, '0') + ':00';
     let tip = `${h} — ${t(CAT_LABEL_KEYS[cat])}`;
@@ -1926,8 +2051,14 @@ function renderWeather(data) {
     if (precProb[i] !== undefined) tip += ` ☔${precProb[i]}%`;
     if (windSpd[i] !== undefined) tip += ` 💨${Math.round(windSpd[i])} km/h`;
     el.dataset.tip = tip;
+    el.dataset.hour = i;
+    el.addEventListener('click', () => selectWeatherHour(i));
     $weatherBar.appendChild(el);
   }
+
+  // Update hour indicators
+  updateHourIndicator(n);
+  updateNowIndicator(n);
 
   // Legend (only used categories)
   $weatherLegend.innerHTML = '';
@@ -1938,5 +2069,177 @@ function renderWeather(data) {
     $weatherLegend.appendChild(d);
   });
 }
+
+// ==============================================================
+// Clickable hour bar + hour indicator
+// ==============================================================
+function selectWeatherHour(hour) {
+  if (_selectedHour === hour) {
+    // Deselect — back to day summary
+    _selectedHour = null;
+  } else {
+    _selectedHour = hour;
+  }
+  if (_lastWeatherData) renderWeather(_lastWeatherData);
+}
+
+function updateHourIndicator(barCount) {
+  if (_selectedHour === null || barCount === 0) {
+    $weatherHourIndicator.classList.remove('visible');
+    return;
+  }
+  $weatherHourIndicator.classList.add('visible');
+  const pct = ((_selectedHour + 0.5) / barCount) * 100;
+  $weatherHourIndicator.style.left = `calc(${pct}% - 5px)`;
+}
+
+function updateNowIndicator(barCount) {
+  // Show red triangle only when viewing today's data
+  const today = new Date().toISOString().slice(0, 10);
+  const nowHour = new Date().getHours();
+  if ($weatherDate.value !== today || barCount === 0 || nowHour >= barCount) {
+    $weatherNowIndicator.classList.remove('visible');
+    return;
+  }
+  $weatherNowIndicator.classList.add('visible');
+  const pct = ((nowHour + 0.5) / barCount) * 100;
+  $weatherNowIndicator.style.left = `calc(${pct}% - 5px)`;
+}
+
+// ==============================================================
+// Weather overlay (RainViewer + OpenWeatherMap)
+// ==============================================================
+const OWM_LAYERS = {
+  precipitation_new: 'weather.precipitation',
+  clouds_new: 'weather.clouds',
+  temp_new: 'weather.temperature',
+  wind_new: 'weather.windLayer',
+  pressure_new: 'weather.pressure',
+};
+
+function populateWeatherLayers() {
+  const apiKey = (document.getElementById('owmApiKey').value || '').trim();
+  $weatherLayer.innerHTML = '';
+  // RainViewer is always available (free, no key)
+  const rvOpt = document.createElement('option');
+  rvOpt.value = 'rainviewer';
+  rvOpt.textContent = t('weather.radar');
+  $weatherLayer.appendChild(rvOpt);
+  // OWM layers only if API key is set
+  if (apiKey) {
+    for (const [layer, labelKey] of Object.entries(OWM_LAYERS)) {
+      const opt = document.createElement('option');
+      opt.value = layer;
+      opt.textContent = t(labelKey);
+      $weatherLayer.appendChild(opt);
+    }
+  }
+}
+
+async function fetchRainviewerData() {
+  try {
+    const res = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+    const data = await res.json();
+    _rainviewerTimestamps = data;
+    return data;
+  } catch (e) {
+    console.error('RainViewer fetch error:', e);
+    return null;
+  }
+}
+
+function applyWeatherOverlay() {
+  removeWeatherOverlay();
+  if (!$weatherOverlay.checked) return;
+
+  const today = new Date().toISOString().slice(0, 10);
+  if ($weatherDate.value !== today) {
+    $weatherOverlayMsg.textContent = t('weather.overlayCurrentOnly');
+    $weatherOverlayMsg.classList.add('visible');
+    $weatherOverlay.checked = false;
+    return;
+  }
+  $weatherOverlayMsg.classList.remove('visible');
+
+  const layerVal = $weatherLayer.value;
+  if (layerVal === 'rainviewer') {
+    applyRainviewerOverlay();
+  } else {
+    applyOwmOverlay(layerVal);
+  }
+}
+
+async function applyRainviewerOverlay() {
+  let data = _rainviewerTimestamps;
+  if (!data) data = await fetchRainviewerData();
+  if (!data || !data.radar || !data.radar.past || !data.radar.past.length) return;
+
+  const latest = data.radar.past[data.radar.past.length - 1];
+  const host = data.host;
+  const path = latest.path;
+  _weatherOverlayLayer = L.tileLayer(
+    `${host}${path}/256/{z}/{x}/{y}/2/1_1.png`,
+    { opacity: 0.6, maxZoom: 18, zIndex: 400, attribution: 'RainViewer' }
+  ).addTo(map);
+}
+
+function applyOwmOverlay(layer) {
+  const apiKey = (document.getElementById('owmApiKey').value || '').trim();
+  if (!apiKey) return;
+  // Pre-flight: test a single tile to verify the key works for tiles
+  const testUrl = `https://tile.openweathermap.org/map/${layer}/1/0/0.png?appid=${apiKey}`;
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    // Key works for tiles — create the layer
+    _weatherOverlayLayer = L.tileLayer(
+      `https://tile.openweathermap.org/map/${layer}/{z}/{x}/{y}.png?appid=${apiKey}`,
+      { opacity: 0.6, maxZoom: 18, zIndex: 400, attribution: 'OpenWeatherMap' }
+    );
+    let errShown = false;
+    _weatherOverlayLayer.on('tileerror', () => {
+      if (!errShown) {
+        errShown = true;
+        $weatherOverlayMsg.textContent = t('weather.overlayTileError');
+        $weatherOverlayMsg.classList.add('visible');
+      }
+    });
+    _weatherOverlayLayer.addTo(map);
+  };
+  img.onerror = () => {
+    // Tile 401/403 — key not authorised for tiles
+    $weatherOverlayMsg.textContent = t('weather.overlayKeyError');
+    $weatherOverlayMsg.classList.add('visible');
+    $weatherOverlay.checked = false;
+  };
+  img.src = testUrl;
+}
+
+function removeWeatherOverlay() {
+  if (_weatherOverlayLayer) {
+    map.removeLayer(_weatherOverlayLayer);
+    _weatherOverlayLayer = null;
+  }
+  $weatherOverlayMsg.classList.remove('visible');
+}
+
+function validateWeatherOverlay() {
+  const today = new Date().toISOString().slice(0, 10);
+  if ($weatherOverlay.checked && $weatherDate.value !== today) {
+    $weatherOverlayMsg.textContent = t('weather.overlayCurrentOnly');
+    $weatherOverlayMsg.classList.add('visible');
+    removeWeatherOverlay();
+    $weatherOverlay.checked = false;
+  }
+}
+
+// Overlay checkbox + layer dropdown listeners
+$weatherOverlay.addEventListener('change', applyWeatherOverlay);
+$weatherLayer.addEventListener('change', () => {
+  if ($weatherOverlay.checked) applyWeatherOverlay();
+});
+
+// Initialize layer dropdown
+populateWeatherLayers();
 
 loadLanguage('en').then(() => loadConfig().then(() => setTimeout(updateOverlays, 500)));

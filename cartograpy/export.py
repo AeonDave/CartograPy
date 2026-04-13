@@ -153,7 +153,7 @@ def export_map_pdf(
 
     grid_info = None
     if show_grid and grid_type != "none":
-        _status(f"Calcolo griglia {GRID_SYSTEMS.get(grid_type, grid_type)}…")
+        _status(f"Computing {GRID_SYSTEMS.get(grid_type, grid_type)} grid…")
         grid_info = compute_grid(grid_type, center_lat, center_lon,
                                  total_ground_w, total_ground_h, grid_spacing,
                                  scale, full_labels=grid_full_labels)
@@ -189,7 +189,7 @@ def export_map_pdf(
             if sheet_idx >= sheets:
                 break
             sheet_idx += 1
-            _status(f"Composizione foglio {sheet_idx}/{sheets}…")
+            _status(f"Composing sheet {sheet_idx}/{sheets}…")
 
             # Sheet centre offset from map centre (in metres)
             off_x_m = (c - (cols - 1) / 2.0) * step_w_m
@@ -312,7 +312,7 @@ def export_map_pdf(
             if sheets > 1:
                 # Sheet number
                 info_font = _font(max(14, dpi * 9 // 72))
-                sheet_label = f"Foglio {sheet_idx} / {sheets}"
+                sheet_label = f"Sheet {sheet_idx} / {sheets}"
                 if is_last:
                     # place sheet label to the right of the info block
                     sx = page_w - margin_px - int(50 / 25.4 * dpi)
@@ -324,7 +324,7 @@ def export_map_pdf(
                     # Scale label on non-last pages too
                     small_font = _font(max(12, dpi * 7 // 72))
                     dp.text((sx, legend_y + int(5 / 25.4 * dpi)),
-                            f"Scala  1 : {scale:,}".replace(",", "."),
+                            f"Scale  1 : {scale:,}".replace(",", "."),
                             fill=(80, 80, 80), font=small_font)
 
                 # Mini position diagram
@@ -338,13 +338,13 @@ def export_map_pdf(
             pages.append(page)
 
     # ---- save ------------------------------------------------------------
-    _status("Salvataggio PDF…")
+    _status("Saving PDF…")
     if len(pages) == 1:
         pages[0].save(str(output), "PDF", resolution=dpi)
     else:
         pages[0].save(str(output), "PDF", resolution=dpi,
                       save_all=True, append_images=pages[1:])
-    _status(f"Salvato: {output}")
+    _status(f"Saved: {output}")
     return output
 
 
@@ -512,19 +512,19 @@ def _draw_scale_bar(draw: ImageDraw.ImageDraw, x: int, y: int,
     draw.text((x + bar_px, ty), lbl, fill=(0, 0, 0), font=fnt)
 
     draw.text((x, ty + int(5 / 25.4 * dpi)),
-              f"Scala  1 : {scale:,}".replace(",", "."),
+              f"Scale  1 : {scale:,}".replace(",", "."),
               fill=(0, 0, 0), font=fnt)
 
 
 def _draw_info(draw, x, y, scale, lat, lon, grid_info, source, dpi):
     fnt = _font(max(14, dpi * 8 // 72))   # ~8 pt at print
     lines = [
-        f"Centro: {lat:.5f}°N  {abs(lon):.5f}°{'E' if lon >= 0 else 'W'}",
-        f"Fonte: {source}",
+        f"Center: {lat:.5f}°N  {abs(lon):.5f}°{'E' if lon >= 0 else 'W'}",
+        f"Source: {source}",
     ]
     if grid_info:
-        lines.append(f"Griglia {GRID_SYSTEMS.get(grid_info.system, grid_info.system)} — {grid_info.zone} — EPSG:{grid_info.epsg}")
-    lines.append("Stampare al 100 % senza adattamento pagina")
+        lines.append(f"Grid {GRID_SYSTEMS.get(grid_info.system, grid_info.system)} — {grid_info.zone} — EPSG:{grid_info.epsg}")
+    lines.append("Print at 100% without fit-to-page scaling")
     for i, line in enumerate(lines):
         draw.text((x, y + i * int(5 / 25.4 * dpi)), line,
                   fill=(60, 60, 60), font=fnt)

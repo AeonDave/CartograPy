@@ -158,6 +158,36 @@
     </div>
   </details>
 
+  <!-- Weather settings -->
+  <details class="panel-section">
+    <summary><i class="fa-solid fa-cloud-sun"></i> <span data-i18n="section.weather">Weather</span></summary>
+    <div class="content">
+      <!-- Hidden field keeps the value for CONFIG_FIELDS -->
+      <input type="hidden" id="owmApiKey">
+      <!-- State A: no key — input + confirm -->
+      <div id="owmKeyInput">
+        <div class="field" style="gap:4px;">
+          <label data-i18n="label.owmApiKey" style="min-width:unset; white-space:nowrap;">OWM API Key:</label>
+          <input type="text" id="owmKeyField" placeholder="your-api-key" style="flex:1; font-size:11px;" autocomplete="off">
+          <button id="owmKeyConfirm" class="btn-owm-confirm" title="Confirm"><i class="fa-solid fa-check"></i></button>
+        </div>
+        <div style="font-size:10px; color:#94a3b8; margin-top:2px;">
+          <a href="https://home.openweathermap.org/api_keys" target="_blank" rel="noopener" style="color:#6366f1;">OpenWeatherMap</a>
+          — <span data-i18n="label.owmApiKeyHint">free key for weather overlay layers</span>
+        </div>
+        <div id="owmKeyError" class="owm-key-error"></div>
+      </div>
+      <!-- State B: key set — badge + trash -->
+      <div id="owmKeyBadge" style="display:none;">
+        <div class="owm-badge-row">
+          <i class="fa-solid fa-key" style="color:#22c55e;"></i>
+          <span class="owm-badge-text"><span data-i18n="label.owmConfigured">API key configured</span></span>
+          <button id="owmKeyDelete" class="btn-owm-delete" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
+        </div>
+      </div>
+    </div>
+  </details>
+
   <!-- Tools -->
   <details class="panel-section" open>
     <summary><i class="fa-solid fa-screwdriver-wrench"></i> <span data-i18n="section.tools">Tools</span></summary>
@@ -307,6 +337,7 @@
     </div>
     <div id="weatherDateRow">
       <input type="date" id="weatherDate">
+      <button id="weatherNow" title="Now"><i class="fa-solid fa-clock-rotate-left"></i></button>
     </div>
     <div id="weatherBody">
       <div id="weatherIcon"></div>
@@ -319,11 +350,20 @@
     <div id="weatherStats"></div>
     <div id="weatherBarSection">
       <div id="weatherBar"></div>
+      <div id="weatherBarIndicators">
+        <div id="weatherNowIndicator">▲</div>
+        <div id="weatherHourIndicator">▲</div>
+      </div>
       <div id="weatherBarLabels">
         <span>00</span><span>06</span><span>12</span><span>18</span><span>24</span>
       </div>
     </div>
     <div id="weatherLegend"></div>
+    <div id="weatherOverlayRow">
+      <label><input type="checkbox" id="weatherOverlay"> <span data-i18n="weather.overlay">Map overlay</span></label>
+      <select id="weatherLayer"></select>
+    </div>
+    <div id="weatherOverlayMsg"></div>
   </div>
   <div id="status" data-i18n="status.ready">Ready — drag the map, then export the PDF</div>
 </div>

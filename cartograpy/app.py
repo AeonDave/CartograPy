@@ -17,7 +17,7 @@ class CartograPyApp(tk.Tk):
 
     def __init__(self) -> None:
         super().__init__()
-        self.title("CartograPy — Stampa Mappe in Scala")
+        self.title("CartograPy")
         self.geometry("1200x820")
         self.minsize(800, 600)
 
@@ -38,17 +38,17 @@ class CartograPyApp(tk.Tk):
         top.pack(side="top", fill="x", padx=6, pady=(6, 2))
 
         # --- row 1: search ------------------------------------------------
-        ttk.Label(top, text="Cerca luogo:").pack(side="left")
+        ttk.Label(top, text="Search place:").pack(side="left")
         self._search_var = tk.StringVar()
         se = ttk.Entry(top, textvariable=self._search_var, width=32)
         se.pack(side="left", padx=4)
         se.bind("<Return>", lambda _: self._do_search())
-        ttk.Button(top, text="Cerca", command=self._do_search).pack(side="left")
+        ttk.Button(top, text="Search", command=self._do_search).pack(side="left")
 
         ttk.Separator(top, orient="vertical").pack(side="left", fill="y", padx=8)
 
         # Scale
-        ttk.Label(top, text="Scala 1 :").pack(side="left")
+        ttk.Label(top, text="Scale 1 :").pack(side="left")
         self._scale_var = tk.StringVar(value="25000")
         sc = ttk.Combobox(top, textvariable=self._scale_var, width=9,
                           values=[str(s) for s in SCALES])
@@ -57,7 +57,7 @@ class CartograPyApp(tk.Tk):
         sc.bind("<Return>", lambda _: self._update_print_area())
 
         # Paper
-        ttk.Label(top, text="Foglio:").pack(side="left", padx=(8, 0))
+        ttk.Label(top, text="Paper:").pack(side="left", padx=(8, 0))
         self._paper_var = tk.StringVar(value="A4")
         pp = ttk.Combobox(top, textvariable=self._paper_var, width=7,
                           values=list(PAPER_SIZES.keys()), state="readonly")
@@ -66,7 +66,7 @@ class CartograPyApp(tk.Tk):
 
         # Orientation
         self._landscape_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(top, text="Orizzontale",
+        ttk.Checkbutton(top, text="Landscape",
                         variable=self._landscape_var,
                         command=self._update_print_area).pack(side="left", padx=6)
 
@@ -74,7 +74,7 @@ class CartograPyApp(tk.Tk):
         row2 = ttk.Frame(self)
         row2.pack(side="top", fill="x", padx=6, pady=(0, 4))
 
-        ttk.Label(row2, text="Fonte mappa:").pack(side="left")
+        ttk.Label(row2, text="Map source:").pack(side="left")
         self._source_var = tk.StringVar(value="OpenTopoMap")
         sv = ttk.Combobox(row2, textvariable=self._source_var, width=16,
                           values=list(TILE_SOURCES.keys()), state="readonly")
@@ -82,7 +82,7 @@ class CartograPyApp(tk.Tk):
         sv.bind("<<ComboboxSelected>>", lambda _: self._change_source())
 
         self._grid_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(row2, text="Griglia UTM", variable=self._grid_var,
+        ttk.Checkbutton(row2, text="UTM grid", variable=self._grid_var,
                         command=self._toggle_grid).pack(side="left", padx=10)
 
         ttk.Label(row2, text="DPI:").pack(side="left", padx=(8, 0))
@@ -91,9 +91,9 @@ class CartograPyApp(tk.Tk):
                      values=["150", "200", "300", "600"],
                      state="readonly").pack(side="left", padx=4)
 
-        ttk.Button(row2, text="Adatta vista", command=self._fit).pack(side="left", padx=8)
+        ttk.Button(row2, text="Fit view", command=self._fit).pack(side="left", padx=8)
 
-        ttk.Button(row2, text="  Esporta PDF  ",
+        ttk.Button(row2, text="  Export PDF  ",
                    command=self._export_pdf).pack(side="right", padx=4)
 
         # --- search results dropdown (hidden until needed) ----------------
@@ -118,7 +118,7 @@ class CartograPyApp(tk.Tk):
     # ------------------------------------------------------------------
 
     def _build_statusbar(self) -> None:
-        self._status_var = tk.StringVar(value="Pronto")
+        self._status_var = tk.StringVar(value="Ready")
         sb = ttk.Label(self, textvariable=self._status_var, relief="sunken",
                        anchor="w", padding=(4, 2))
         sb.pack(side="bottom", fill="x")
@@ -131,13 +131,13 @@ class CartograPyApp(tk.Tk):
         query = self._search_var.get().strip()
         if not query:
             return
-        self._status("Ricerca in corso…")
+        self._status("Searching…")
 
         def _bg():
             try:
                 results = geocode(query)
             except Exception as exc:
-                self.after(0, lambda: self._status(f"Errore ricerca: {exc}"))
+                self.after(0, lambda: self._status(f"Search error: {exc}"))
                 return
             self.after(0, lambda: self._show_results(results))
 
@@ -146,7 +146,7 @@ class CartograPyApp(tk.Tk):
     def _show_results(self, results) -> None:
         self._search_results = results
         if not results:
-            self._status("Nessun risultato")
+            self._status("No results")
             self._res_frame.pack_forget()
             return
         names = [r.name[:120] for r in results]
@@ -188,7 +188,7 @@ class CartograPyApp(tk.Tk):
         try:
             scale = int(self._scale_var.get())
         except ValueError:
-            messagebox.showerror("Errore", "Scala non valida")
+            messagebox.showerror("Error", "Invalid scale")
             return
         paper = self._paper_var.get()
         dpi = int(self._dpi_var.get())
@@ -199,13 +199,13 @@ class CartograPyApp(tk.Tk):
         path = filedialog.asksaveasfilename(
             defaultextension=".pdf",
             filetypes=[("PDF", "*.pdf")],
-            initialfile=f"mappa_{scale}_{paper}.pdf",
-            title="Salva mappa PDF",
+            initialfile=f"map_{scale}_{paper}.pdf",
+            title="Save map PDF",
         )
         if not path:
             return
 
-        self._status("Esportazione in corso…")
+        self._status("Exporting…")
         self.update_idletasks()
 
         def _bg():
@@ -224,15 +224,15 @@ class CartograPyApp(tk.Tk):
                     progress_cb=lambda msg: self.after(0, lambda m=msg: self._status(m)),
                 )
                 self.after(0, lambda: messagebox.showinfo(
-                    "Esportazione completata",
-                    f"PDF salvato in:\n{path}\n\n"
-                    "IMPORTANTE: stampare al 100 % (scala reale),\n"
-                    "senza 'adatta alla pagina'.",
+                    "Export completed",
+                    f"PDF saved to:\n{path}\n\n"
+                    "IMPORTANT: print at 100% (actual size),\n"
+                    "without 'fit to page'.",
                 ))
             except Exception as exc:
-                self.after(0, lambda: messagebox.showerror("Errore esportazione", str(exc)))
+                self.after(0, lambda: messagebox.showerror("Export error", str(exc)))
             finally:
-                self.after(0, lambda: self._status("Pronto"))
+                self.after(0, lambda: self._status("Ready"))
 
         threading.Thread(target=_bg, daemon=True).start()
 

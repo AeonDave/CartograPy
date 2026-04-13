@@ -155,5 +155,23 @@
   "weather.rain": "Pioggia",
   "weather.heavyrain": "Pioggia forte",
   "weather.snow": "Neve",
-  "weather.storm": "Temporale"
+  "weather.storm": "Temporale",
+
+  "section.weather": "Meteo",
+  "label.owmApiKey": "API Key OWM:",
+  "label.owmApiKeyHint": "chiave gratuita per i layer meteo sulla mappa",
+  "label.owmConfigured": "API key configurata",
+  "label.owmInvalidKey": "API key non valida \u2014 controlla e riprova",
+  "weather.overlay": "Overlay mappa",
+  "weather.now": "Adesso",
+  "weather.overlayCurrentOnly": "L'overlay meteo è disponibile solo per la data odierna",
+  "weather.overlayTileError": "Alcuni tile dell'overlay non sono stati caricati",
+  "weather.overlayKeyError": "API key non autorizzata per le tile mappa — possono servire fino a 2 ore dopo la creazione",
+  "weather.radar": "Radar (RainViewer)",
+  "weather.precipitation": "Precipitazioni",
+  "weather.clouds": "Nuvole",
+  "weather.temperature": "Temperatura",
+  "weather.windLayer": "Vento",
+  "weather.pressure": "Pressione",
+  "weather.hourDetail": "Dettaglio ora: {0}:00"
 }

@@ -155,5 +155,23 @@
   "weather.rain": "Rain",
   "weather.heavyrain": "Heavy rain",
   "weather.snow": "Snow",
-  "weather.storm": "Thunderstorm"
+  "weather.storm": "Thunderstorm",
+
+  "section.weather": "Weather",
+  "label.owmApiKey": "OWM API Key:",
+  "label.owmApiKeyHint": "free key for weather overlay layers",
+  "label.owmConfigured": "API key configured",
+  "label.owmInvalidKey": "Invalid API key — check and try again",
+  "weather.overlay": "Map overlay",
+  "weather.now": "Now",
+  "weather.overlayCurrentOnly": "Weather overlay is only available for the current date",
+  "weather.overlayTileError": "Some overlay tiles failed to load",
+  "weather.overlayKeyError": "API key not authorised for map tiles — it may take up to 2 h after creation",
+  "weather.radar": "Radar (RainViewer)",
+  "weather.precipitation": "Precipitation",
+  "weather.clouds": "Clouds",
+  "weather.temperature": "Temperature",
+  "weather.windLayer": "Wind",
+  "weather.pressure": "Pressure",
+  "weather.hourDetail": "Hour detail: {0}:00"
 }

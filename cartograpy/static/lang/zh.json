@@ -155,5 +155,23 @@
   "weather.rain": "\u96e8",
   "weather.heavyrain": "\u5927\u96e8",
   "weather.snow": "\u96ea",
-  "weather.storm": "\u96f7\u66b4"
+  "weather.storm": "\u96f7\u66b4",
+
+  "section.weather": "\u5929\u6c14\u8bbe\u7f6e",
+  "label.owmApiKey": "OWM API Key:",
+  "label.owmApiKeyHint": "\u514d\u8d39\u5bc6\u94a5\u7528\u4e8e\u5929\u6c14\u53e0\u52a0\u5c42",
+  "label.owmConfigured": "API \u5bc6\u94a5\u5df2\u914d\u7f6e",
+  "label.owmInvalidKey": "API \u5bc6\u94a5\u65e0\u6548 \u2014 \u8bf7\u68c0\u67e5\u540e\u91cd\u8bd5",
+  "weather.overlay": "\u5730\u56fe\u53e0\u52a0",
+  "weather.now": "\u73b0\u5728",
+  "weather.overlayCurrentOnly": "\u5929\u6c14\u53e0\u52a0\u5c42\u4ec5\u9002\u7528\u4e8e\u4eca\u5929\u7684\u65e5\u671f",
+  "weather.overlayTileError": "\u90e8\u5206\u53e0\u52a0\u5c42\u56fe\u5757\u52a0\u8f7d\u5931\u8d25",
+  "weather.overlayKeyError": "API \u5bc6\u94a5\u672a\u6388\u6743\u7528\u4e8e\u5730\u56fe\u56fe\u5757 \u2014 \u521b\u5efa\u540e\u53ef\u80fd\u9700\u8981 2 \u5c0f\u65f6",
+  "weather.radar": "\u96f7\u8fbe (RainViewer)",
+  "weather.precipitation": "\u964d\u6c34",
+  "weather.clouds": "\u4e91\u5c42",
+  "weather.temperature": "\u6e29\u5ea6",
+  "weather.windLayer": "\u98ce",
+  "weather.pressure": "\u6c14\u538b",
+  "weather.hourDetail": "\u5c0f\u65f6\u8be6\u60c5: {0}:00"
 }
