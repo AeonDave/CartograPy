@@ -1,0 +1,6 @@
+{
+  "host": "127.0.0.1",
+  "port": 8271,
+  "open_browser": true,
+  "browser_delay_sec": 0.8
+}

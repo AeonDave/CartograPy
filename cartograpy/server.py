@@ -15,7 +15,6 @@ import re
 import tempfile
 import threading
 import webbrowser
-from functools import partial
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -25,13 +24,13 @@ import urllib.request
 from .export import export_map_pdf
 from .geocoder import autocomplete, geocode
 from .grid import GRID_SYSTEMS, compute_grid
+from .runtime import get_data_dir
 from .tiles import TileCache
 from .utils import PAPER_SIZES, SCALES, auto_grid_spacing
 
 _HERE = Path(__file__).resolve().parent
 _STATIC = _HERE / "static"
-_DATA = _HERE.parent / "data"
-_DATA.mkdir(exist_ok=True)
+_DATA = get_data_dir()
 _CONFIG_FILE = _DATA / "config.json"
 _WP_DIR = _DATA / "waypoints"
 _WP_DIR.mkdir(exist_ok=True)
@@ -202,6 +201,29 @@ def _parse_coords(grid_type: str, raw: str) -> tuple[float, float]:
 
     # latlon / latlon_dd / latlon_dm — auto-detect format
     return _parse_latlon_auto(raw)
+
+
+def create_server(host: str = "127.0.0.1", port: int = 8271) -> tuple[HTTPServer, str]:
+    """Create the configured HTTP server and return it with its local URL."""
+    tc = TileCache()
+    handler_cls = type("H", (_Handler,), {"tile_cache": tc})
+    try:
+        server = HTTPServer((host, port), handler_cls)
+    except OSError as exc:
+        raise OSError(
+            f"Could not start CartograPy on {host}:{port}. "
+            "Update cartograpy-server.json or free that port and retry."
+        ) from exc
+
+    return server, f"http://{host}:{port}"
+
+
+def open_browser_later(url: str, delay_sec: float = 0.8) -> threading.Timer:
+    """Open *url* in the default browser after a short delay."""
+    opener = threading.Timer(delay_sec, lambda: webbrowser.open(url))
+    opener.daemon = True
+    opener.start()
+    return opener
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -389,7 +411,6 @@ class _Handler(BaseHTTPRequestHandler):
             self._json({"error": "missing grid_type or coords"}, 400)
             return
         try:
-            from pyproj import Transformer
             lat, lon = _parse_coords(grid_type, coords_raw)
             self._json({"lat": lat, "lon": lon})
         except Exception as exc:
@@ -616,17 +637,23 @@ class _Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
 
-def run_server(host: str = "127.0.0.1", port: int = 8271) -> None:
-    """Start the CartograPy web server and open the browser."""
-    tc = TileCache()
-    handler_cls = type("H", (_Handler,), {"tile_cache": tc})
-    server = HTTPServer((host, port), handler_cls)
-    url = f"http://{host}:{port}"
+def run_server(
+    host: str = "127.0.0.1",
+    port: int = 8271,
+    *,
+    open_browser: bool = True,
+    browser_delay_sec: float = 0.8,
+) -> None:
+    """Start the CartograPy web server and optionally open the browser."""
+    server, url = create_server(host=host, port=port)
     print(f"CartograPy server: {url}")
     print("Press Ctrl+C to stop.\n")
-    threading.Timer(0.8, lambda: webbrowser.open(url)).start()
+    if open_browser:
+        open_browser_later(url, browser_delay_sec)
+
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         print("\nServer stopped.")
+    finally:
         server.server_close()

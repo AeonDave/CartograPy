@@ -7,6 +7,11 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 
+#build
+build/
+dist/
+*.spec
+
 # Virtual Environment
 .venv/
 venv/

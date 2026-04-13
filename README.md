@@ -59,7 +59,92 @@ python run.py
 
 Opens `http://127.0.0.1:8271` in the default browser. Press `Ctrl+C` to stop.
 
+On first launch CartograPy also creates a dedicated server bootstrap config named
+`cartograpy-server.json` beside `run.py`. You can edit that file to change the
+listening port (or browser auto-open behaviour) before the next launch.
+
 An alternative tkinter GUI is available via `cartograpy.app.CartograPyApp`.
+
+## Dedicated server config
+
+The web server bootstrap settings are intentionally separate from the UI config.
+
+- `cartograpy-server.json` → startup settings for the local HTTP server
+- `data/config.json` → last-used UI state inside the web app
+
+When running from source, `cartograpy-server.json` is created in the project root.
+When running from a packaged Windows build, it is created beside `CartograPy.exe`.
+
+## Windows executable
+
+For Windows users you can build a portable launcher that starts the local server
+with a normal double-click:
+
+Prerequisites:
+
+- Windows
+- Python 3.10+
+- `pip`
+
+```bash
+pip install -r requirements-build.txt
+python build_windows_exe.py
+```
+
+What the build script does:
+
+1. Converts `img/logo.png` into a multi-size Windows icon at `build/generated/cartograpy.ico`
+2. Bundles the launcher, web UI, logo, and Python runtime with PyInstaller
+3. Writes the distributable app to `dist/CartograPy/`
+
+The generated launcher is `dist/CartograPy/CartograPy.exe`.
+
+It opens a small desktop controller window with:
+
+- `Apri browser`
+- `Apri config`
+- `Apri cartella dati`
+- `Ferma server`
+- tray icon support to keep localhost alive in background
+
+Main build outputs:
+
+- `dist/CartograPy/CartograPy.exe` — runnable Windows launcher
+- `dist/CartograPy/_internal/` — files required by the launcher bundle
+- `build/generated/cartograpy.ico` — generated icon for the Windows executable
+
+For a GitHub release, zip the whole `dist/CartograPy/` folder contents, not only the `.exe`.
+The packaged app depends on `_internal/`, so shipping the executable alone is not enough.
+
+To create the release archive from PowerShell:
+
+```powershell
+Compress-Archive -Path 'dist/CartograPy/*' -DestinationPath 'dist/CartograPy-windows-x64.zip'
+```
+
+Recommended release asset:
+
+- `dist/CartograPy-windows-x64.zip`
+
+On first start it creates these writable files beside the executable:
+
+- `cartograpy-server.json`
+- `data/config.json`
+- `data/waypoints/*.json`
+- `data/tools/*.json`
+
+If you want a clean release package after local tests, delete any generated runtime files
+inside `dist/CartograPy/` before creating the zip, especially:
+
+- `dist/CartograPy/cartograpy-server.json`
+- `dist/CartograPy/data/`
+
+If you want to try the same controller without building the EXE first:
+
+```bash
+pip install -r requirements-build.txt
+python -m cartograpy.launcher
+```
 
 ## Workflow
 
