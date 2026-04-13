@@ -213,6 +213,15 @@ const $btnLine       = document.getElementById('btnLine');
 const $btnCompass    = document.getElementById('btnCompass');
 const $btnWpAddOnMap = document.getElementById('btnWpAddOnMap');
 
+// Touch device detection
+const _isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
+// Mobile tool bar refs
+const $mobileToolBar = document.getElementById('mobileToolBar');
+const $mtbDone = document.getElementById('mtbDone');
+const $mtbUndo = document.getElementById('mtbUndo');
+const $mtbCancel = document.getElementById('mtbCancel');
+
 // ==============================================================
 // Sidebar toggle
 // ==============================================================
@@ -221,6 +230,26 @@ document.getElementById('toggleSidebar').addEventListener('click', () => {
   document.body.classList.toggle('sidebar-hidden');
   setTimeout(() => map.invalidateSize(), 300);
 });
+
+// Sidebar backdrop (close on tap)
+document.getElementById('sidebarBackdrop').addEventListener('click', () => {
+  document.getElementById('sidebar').classList.add('collapsed');
+  document.body.classList.add('sidebar-hidden');
+  setTimeout(() => map.invalidateSize(), 300);
+});
+
+// Close button inside sidebar header (for mobile full-width)
+document.getElementById('closeSidebar').addEventListener('click', () => {
+  document.getElementById('sidebar').classList.add('collapsed');
+  document.body.classList.add('sidebar-hidden');
+  setTimeout(() => map.invalidateSize(), 300);
+});
+
+// Auto-collapse sidebar on mobile at load
+if (window.innerWidth <= 768) {
+  document.getElementById('sidebar').classList.add('collapsed');
+  document.body.classList.add('sidebar-hidden');
+}
 
 // ==============================================================
 // Events
@@ -284,6 +313,7 @@ async function doSearch() {
 function goToPlace(name, lat, lon) {
   map.setView([lat, lon], 14);
   updateOverlays();
+  closeSidebarMobile();
   status(`${lat.toFixed(5)}°N  ${Math.abs(lon).toFixed(5)}°${lon>=0?'E':'W'}`);
   // Add to history (avoid duplicates)
   const short = name.substring(0, 80);
@@ -339,9 +369,7 @@ function renderHistory() {
   list.querySelectorAll('.hist-name').forEach(el => {
     el.addEventListener('click', () => {
       const h = searchHistory[parseInt(el.dataset.idx)];
-      map.setView([h.lat, h.lon], 14);
-      updateOverlays();
-      status(`${h.lat.toFixed(5)}°N  ${Math.abs(h.lon).toFixed(5)}°${h.lon>=0?'E':'W'}`);
+      goToPlace(h.name, h.lat, h.lon);
     });
   });
   list.querySelectorAll('.hist-del').forEach(el => {
@@ -466,6 +494,10 @@ $btnRuler.addEventListener('click', () => toggleTool('ruler'));
 function activateRuler() {
   document.getElementById('rulerInfo').style.display = 'block';
   document.getElementById('rulerResult').textContent = '';
+  if (_isTouch) {
+    const el = document.querySelector('#rulerInfo [data-i18n="tool.ruler.info"]');
+    if (el) el.textContent = t('tool.ruler.infoTouch');
+  }
   map.getContainer().classList.add('ruler-cursor');
   map.on('click', rulerClick);
 }
@@ -782,6 +814,10 @@ $btnProtractor.addEventListener('click', () => toggleTool('protractor'));
 function activateProtractor() {
   document.getElementById('protractorInfo').style.display = 'block';
   document.getElementById('protractorResult').textContent = '';
+  if (_isTouch) {
+    const el = document.querySelector('#protractorInfo [data-i18n="tool.protractor.info"]');
+    if (el) el.textContent = t('tool.protractor.infoTouch');
+  }
   map.getContainer().classList.add('ruler-cursor');
   map.on('click', protractorClick);
 }
@@ -915,6 +951,10 @@ function activateLine() {
   if (linePoints.length >= 2) { lineFinish(); return; }
   document.getElementById('lineInfo').style.display = 'block';
   document.getElementById('lineResult').textContent = '';
+  if (_isTouch) {
+    const el = document.querySelector('#lineInfo [data-i18n="tool.line.info"]');
+    if (el) el.textContent = t('tool.line.infoTouch');
+  }
   map.getContainer().classList.add('ruler-cursor');
   map.on('click', lineClick);
   map.on('dblclick', lineFinish);
@@ -978,6 +1018,7 @@ function lineClick(e) {
 
   updateLineResult();
   updateLineUndoBtn();
+  updateMobileToolBar();
 }
 
 function lineFinishRight(e) {
@@ -998,6 +1039,7 @@ function lineFinish() {
     lineMarkers = []; lineSegments = []; lineSegLabels = []; linePoints = [];
     renderToolHistory('line', lineHistory, TOOL_COLORS.line);
   }
+  updateMobileToolBar();
 }
 
 function lineTotalDist() {
@@ -1097,6 +1139,7 @@ function lineUndo() {
     renderToolHistory('line', lineHistory, TOOL_COLORS.line);
   }
   updateLineUndoBtn();
+  updateMobileToolBar();
 }
 
 function resetLineDraw() {
@@ -1120,6 +1163,10 @@ $btnCompass.addEventListener('click', () => toggleTool('compass'));
 function activateCompass() {
   document.getElementById('compassInfo').style.display = 'block';
   document.getElementById('compassResult').textContent = '';
+  if (_isTouch) {
+    const el = document.querySelector('#compassInfo [data-i18n="tool.compass.info"]');
+    if (el) el.textContent = t('tool.compass.infoTouch');
+  }
   compassFixed = false;
   map.getContainer().classList.add('ruler-cursor');
   map.on('click', compassClick);
@@ -1224,6 +1271,11 @@ function activateWaypoint() {
   document.getElementById('waypointSection').open = true;
   map.getContainer().style.cursor = 'crosshair';
   map.on('click', waypointMapClick);
+  // Mobile: close sidebar and show action bar
+  if (window.innerWidth <= 768 || _isTouch) {
+    closeSidebarMobile();
+    showMobileToolBar();
+  }
 }
 
 function deactivateWaypoint() {
@@ -1231,6 +1283,7 @@ function deactivateWaypoint() {
   $btnWpAddOnMap.classList.remove('active');
   map.getContainer().style.cursor = '';
   map.off('click', waypointMapClick);
+  hideMobileToolBar();
 }
 
 function waypointMapClick(e) {
@@ -1468,6 +1521,12 @@ function toggleTool(name) {
   const t = toolMap[name];
   if (t) { t.btn.classList.add('active'); t.activate(); }
   renderWaypointMarkers();
+  // Mobile: close sidebar and show action bar
+  map.doubleClickZoom.disable();
+  if (window.innerWidth <= 768 || _isTouch) {
+    closeSidebarMobile();
+    showMobileToolBar();
+  }
 }
 
 function deactivateAllTools() {
@@ -1481,7 +1540,49 @@ function deactivateAllTools() {
   renderWaypointMarkers();
   // Also deactivate waypoint map-click mode if active
   if (_wpMapActive) deactivateWaypoint();
+  map.doubleClickZoom.enable();
+  hideMobileToolBar();
 }
+
+// ==============================================================
+// Mobile helpers
+// ==============================================================
+function closeSidebarMobile() {
+  document.getElementById('sidebar').classList.add('collapsed');
+  document.body.classList.add('sidebar-hidden');
+  setTimeout(() => map.invalidateSize(), 300);
+}
+
+function showMobileToolBar() {
+  $mobileToolBar.classList.add('visible');
+  updateMobileToolBar();
+}
+
+function hideMobileToolBar() {
+  $mobileToolBar.classList.remove('visible');
+}
+
+function updateMobileToolBar() {
+  if (!$mobileToolBar.classList.contains('visible')) return;
+  // Done: only for line tool with >= 2 points
+  $mtbDone.style.display = (activeTool === 'line' && linePoints.length >= 2) ? '' : 'none';
+  // Undo: for line tool with points or history
+  $mtbUndo.style.display = (activeTool === 'line' && (linePoints.length > 0 || lineHistory.length > 0)) ? '' : 'none';
+}
+
+$mtbDone.addEventListener('click', () => {
+  if (activeTool === 'line') lineFinish();
+  updateMobileToolBar();
+});
+
+$mtbUndo.addEventListener('click', () => {
+  if (activeTool === 'line') lineUndo();
+  updateMobileToolBar();
+});
+
+$mtbCancel.addEventListener('click', () => {
+  deactivateAllTools();
+});
 
 // ==============================================================
 // Config persistence (auto-save / auto-load)

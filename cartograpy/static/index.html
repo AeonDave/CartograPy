@@ -13,7 +13,7 @@
 
 <!-- ============ SIDEBAR ============ -->
 <div id="sidebar">
-  <h2><i class="fa-solid fa-map"></i> CartograPy</h2>
+  <h2><i class="fa-solid fa-map"></i> CartograPy <button id="closeSidebar" class="close-sidebar-btn"><i class="fa-solid fa-xmark"></i></button></h2>
 
   <!-- Language -->
   <div style="padding: 4px 12px; border-bottom: 1px solid #e5e7eb;">
@@ -366,7 +366,16 @@
     <div id="weatherOverlayMsg"></div>
   </div>
   <div id="status" data-i18n="status.ready">Ready — drag the map, then export the PDF</div>
+  <!-- Mobile floating tool bar -->
+  <div id="mobileToolBar">
+    <button class="mtb-btn mtb-done" id="mtbDone" style="display:none"><i class="fa-solid fa-check"></i> <span data-i18n="btn.done">Done</span></button>
+    <button class="mtb-btn mtb-undo" id="mtbUndo" style="display:none"><i class="fa-solid fa-undo"></i> <span data-i18n="btn.undoLast">Undo</span></button>
+    <button class="mtb-btn mtb-cancel" id="mtbCancel"><i class="fa-solid fa-xmark"></i> <span data-i18n="btn.cancel">Cancel</span></button>
+  </div>
 </div>
+
+<!-- Sidebar backdrop for mobile -->
+<div id="sidebarBackdrop"></div>
 
 <script src="/app.js"></script>
 
