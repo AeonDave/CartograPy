@@ -24,10 +24,10 @@ from io import BytesIO
 
 from .export import export_map_pdf
 from .geocoder import autocomplete, geocode
-from .grid import GRID_SYSTEMS, compute_grid
+from .grid import GRID_SYSTEMS, compute_grid, parse_coords
 from .runtime import get_data_dir
 from .tiles import TileCache, TILE_SOURCES
-from .utils import PAPER_SIZES, SCALES, auto_grid_spacing
+from .utils import PAPER_SIZES, SCALES, auto_grid_spacing, compute_sheet_layout
 
 _HERE = Path(__file__).resolve().parent
 _STATIC = _HERE / "static"
@@ -44,164 +44,6 @@ _SAFE_NAME_RE = re.compile(r'[^a-zA-Z0-9_àèéìòùÀÈÉÌÒÙçÇñÑ -]')
 def _sanitize_filename(name: str) -> str:
     """Sanitize a user-provided name for use as a file stem."""
     return _SAFE_NAME_RE.sub('_', name)[:80]
-
-
-def _compute_sheet_layout(n: int, landscape: bool) -> tuple[int, int]:
-    """Return (cols, rows) for *n* sheets."""
-    if n <= 1:
-        return (1, 1)
-    import math as _m
-    if landscape:
-        cols = _m.ceil(_m.sqrt(n))
-        rows = _m.ceil(n / cols)
-    else:
-        rows = _m.ceil(_m.sqrt(n))
-        cols = _m.ceil(n / rows)
-    return (cols, rows)
-
-
-def _parse_latlon_auto(raw: str) -> tuple[float, float]:
-    """Auto-detect and parse lat/lon in DD, DM, DMS, with N/S/E/W or +/- signs.
-
-    Supported formats:
-      45.89070, 10.04908               (DD)
-      N45.89070° E10.04908°            (DD with hemisphere)
-      45°53.442' 10°02.945'            (DM)
-      N45°53.442' E10°02.945'          (DM with hemisphere)
-      45°53'26.5" 10°2'56.7"           (DMS)
-      N45°53'26.5" E10°2'56.7"         (DMS with hemisphere)
-      +45°53'26.5" +10°2'56.7"         (DMS with +/- sign)
-    """
-
-    raw = raw.strip()
-
-    # Pattern for a single coordinate token (DMS / DM / DD)
-    # Captures: optional sign/hemisphere, degrees, optional minutes, optional seconds
-    tok = (
-        r"([NSEWnsew+-])?\s*"                       # hemisphere or sign
-        r"(\d+(?:\.\d+)?)\s*[°d]?\s*"               # degrees
-        r"(?:(\d+(?:\.\d+)?)\s*[′'m]?\s*"           # minutes (optional)
-        r"(?:(\d+(?:\.\d+)?)\s*[″\"s]?\s*)?)?"      # seconds (optional)
-        r"([NSEWnsew])?"                             # trailing hemisphere
-    )
-
-    matches = re.findall(tok, raw)
-    # Filter out empty matches
-    coords = []
-    for m in matches:
-        pre_hem, deg, mins, secs, post_hem = m
-        if not deg:
-            continue
-        d = float(deg)
-        if mins:
-            d += float(mins) / 60.0
-        if secs:
-            d += float(secs) / 3600.0
-        hem = (pre_hem or post_hem or "").upper()
-        if hem in ("S", "W", "-"):
-            d = -d
-        coords.append(d)
-
-    if len(coords) >= 2:
-        return coords[0], coords[1]
-
-    # Fallback: comma/space separated decimals
-    parts = re.split(r"[\s,]+", raw)
-    nums = []
-    for p in parts:
-        try:
-            nums.append(float(p))
-        except ValueError:
-            pass
-    if len(nums) >= 2:
-        return nums[0], nums[1]
-
-    raise ValueError("Unrecognized lat/lon format")
-
-
-# EPSG lookup for simple projected grids
-_SIMPLE_EPSG: dict[str, int] = {
-    "swiss":         2056,
-    "bng":           27700,
-    "dutch":         28992,
-    "irish_ig":      29902,
-    "irish_itm":     2157,
-    "eov":           23700,
-    "kkj":           2393,
-    "nztm":          2193,
-    "sweref99":      3006,
-    "rt90":          3021,
-    "south_african": 2054,
-    "taiwan":        3826,
-    "qng":           28600,
-}
-
-
-def _parse_coords(grid_type: str, raw: str) -> tuple[float, float]:
-    """Parse a coordinate string in the given grid system → (lat, lon)."""
-    from pyproj import Transformer
-
-    raw = raw.strip()
-
-    if grid_type == "utm":
-        # Formats: "32T 581392 5082439" or "32 T 581392 5082439"
-        m = re.match(r"(\d{1,2})\s*([A-Za-z])\s+([\d.]+)\s+([\d.]+)", raw)
-        if not m:
-            raise ValueError(
-                "UTM format: zone band easting northing (e.g. 32T 581392 5082439)"
-            )
-        zone_num, band, easting, northing = int(m[1]), m[2].upper(), float(m[3]), float(m[4])
-        south = band < 'N'
-        epsg = 32600 + zone_num if not south else 32700 + zone_num
-        t = Transformer.from_crs(f"EPSG:{epsg}", "EPSG:4326", always_xy=True)
-        lon, lat = t.transform(easting, northing)
-        return lat, lon
-
-    if grid_type == "mgrs":
-        try:
-            import mgrs as mgrs_mod
-            m = mgrs_mod.MGRS()
-            lat, lon = m.toLatLon(raw.replace(" ", ""))
-            return lat, lon
-        except ImportError:
-            pass
-        raise ValueError("MGRS requires the 'mgrs' package. Install it with: pip install mgrs")
-
-    if grid_type == "gauss_boaga":
-        parts = raw.split()
-        if len(parts) < 2:
-            raise ValueError("Format: easting northing (e.g. 1681392 5082439)")
-        e, n = float(parts[0]), float(parts[1])
-        epsg = 3003 if e < 2520000 else 3004
-        t = Transformer.from_crs(f"EPSG:{epsg}", "EPSG:4326", always_xy=True)
-        lon, lat = t.transform(e, n)
-        return lat, lon
-
-    if grid_type == "gauss_krueger":
-        parts = raw.split()
-        if len(parts) < 2:
-            raise ValueError("Format: easting northing (e.g. 3581392 5082439)")
-        e, n = float(parts[0]), float(parts[1])
-        # Auto-detect zone from Rechtswert leading digit
-        zone_digit = int(e / 1_000_000)
-        epsg = 31464 + zone_digit  # zone 2→31466, 3→31467, 4→31468, 5→31469
-        t = Transformer.from_crs(f"EPSG:{epsg}", "EPSG:4326", always_xy=True)
-        lon, lat = t.transform(e, n)
-        return lat, lon
-
-    # Simple projected grids (E N format)
-    if grid_type in _SIMPLE_EPSG:
-        parts = raw.split()
-        if len(parts) < 2:
-            raise ValueError("Format: easting northing")
-        e, n = float(parts[0]), float(parts[1])
-        epsg = _SIMPLE_EPSG[grid_type]
-        t = Transformer.from_crs(f"EPSG:{epsg}", "EPSG:4326", always_xy=True)
-        lon, lat = t.transform(e, n)
-        return lat, lon
-
-    # latlon / latlon_dd / latlon_dm — auto-detect format
-    return _parse_latlon_auto(raw)
 
 
 def create_server(host: str = "127.0.0.1", port: int = 8271) -> tuple[HTTPServer, str]:
@@ -396,7 +238,7 @@ class _Handler(BaseHTTPRequestHandler):
         sheet_w_m = (pw - 2 * margins) * scale / 1000.0
         sheet_h_m = (ph - 2 * margins - 20) * scale / 1000.0
 
-        cols, rows = _compute_sheet_layout(sheets, landscape)
+        cols, rows = compute_sheet_layout(sheets, landscape)
         overlap_mm = 10
         step_w = (pw - 2 * margins - overlap_mm) * scale / 1000.0
         step_h = (ph - 2 * margins - 20 - overlap_mm) * scale / 1000.0
@@ -455,7 +297,7 @@ class _Handler(BaseHTTPRequestHandler):
             self._json({"error": "missing grid_type or coords"}, 400)
             return
         try:
-            lat, lon = _parse_coords(grid_type, coords_raw)
+            lat, lon = parse_coords(grid_type, coords_raw)
             self._json({"lat": lat, "lon": lon})
         except Exception as exc:
             self._json({"error": str(exc)}, 400)

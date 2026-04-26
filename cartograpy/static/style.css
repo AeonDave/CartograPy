@@ -54,6 +54,24 @@ body { font-family: system-ui, -apple-system, sans-serif; display: flex; height:
   cursor: pointer; color: #94a3b8; padding: 4px 6px; font-size: 11px; line-height: 1; }
 .btn-owm-delete:hover { color: #dc2626; border-color: #fca5a5; background: #fef2f2; }
 
+/* ---- API keys panel ---- */
+.api-key-list { display: flex; flex-direction: column; gap: 10px; }
+.api-key-row { display: flex; flex-direction: column; gap: 4px; padding: 8px; border: 1px solid #e5e7eb;
+  border-radius: 8px; background: #f8fafc; }
+.api-key-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.api-key-name { font-size: 12px; font-weight: 600; color: #1e293b; text-decoration: none; }
+.api-key-name:hover { color: #6366f1; text-decoration: underline; }
+.api-key-hint { font-size: 10px; color: #94a3b8; flex-basis: 100%; }
+
+/* ---- Tool history rows ---- */
+.tool-hist-row { display: flex; align-items: center; justify-content: space-between;
+  padding: 3px 6px; margin-bottom: 2px; border-radius: 4px;
+  font-size: 12px; font-weight: 600; background: #f1f5f9; }
+.tool-hist-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  flex: 1; cursor: pointer; }
+.tool-hist-del { cursor: pointer; margin-left: 6px; color: #94a3b8; padding: 0 3px; }
+.tool-hist-del:hover { color: #dc2626; }
+
 #toggleSidebar { position: absolute; top: 10px; left: 10px; z-index: 1002; width: 36px; height: 36px;
   border: none; border-radius: 6px; background: #fff; box-shadow: 0 1px 5px rgba(0,0,0,.2);
   cursor: pointer; font-size: 16px; color: #334155; display: flex; align-items: center; justify-content: center; }

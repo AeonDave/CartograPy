@@ -85,10 +85,13 @@
           <option value="Esri WorldStreetMap" data-i18n="source.esriStreets">Esri Streets</option>
           <option value="Esri WorldTopoMap" data-i18n="source.esriTopo">Esri Topo</option>
           <option value="Esri WorldImagery" data-i18n="source.esriSatellite">Esri Satellite</option>
+          <option value="Esri NatGeo World Map">Esri NatGeo</option>
+          <option value="Esri Ocean Basemap">Esri Ocean Basemap</option>
           </optgroup>
           <optgroup label="── CartoDB ──" data-i18n-label="source.cartodb">
           <option value="CartoDB Positron" data-i18n="source.cartodbLight">CartoDB Positron (light)</option>
           <option value="CartoDB Voyager">CartoDB Voyager</option>
+          <option value="CartoDB Voyager NoLabels">CartoDB Voyager (no labels)</option>
           <option value="CartoDB Dark">CartoDB Dark</option>
           </optgroup>
           <optgroup label="── Marine ──" data-i18n-label="source.marine">
@@ -105,6 +108,9 @@
           <option value="BasemapAT">BasemapAT (Austria)</option>
           <option value="BasemapAT Ortho" data-i18n="source.basemapAtOrtho">BasemapAT Ortho</option>
           <option value="NL Kadaster">NL Kadaster</option>
+          <option value="Kartverket Topo (NO)">Kartverket Topo (NO)</option>
+          <option value="Kartverket Topo Greyscale (NO)">Kartverket Topo Greyscale (NO)</option>
+          <option value="IGN España MTN">IGN España MTN</option>
           <option value="USGS Topo">USGS Topo (USA)</option>
           <option value="USGS Imagery">USGS Imagery (USA)</option>
           </optgroup>
@@ -171,32 +177,40 @@
     </div>
   </details>
 
-  <!-- Weather settings -->
+  <!-- API keys -->
   <details class="panel-section">
-    <summary><i class="fa-solid fa-cloud-sun"></i> <span data-i18n="section.weather">Weather</span></summary>
+    <summary><i class="fa-solid fa-key"></i> <span data-i18n="section.apiKeys">API keys</span></summary>
     <div class="content">
-      <!-- Hidden field keeps the value for CONFIG_FIELDS -->
-      <input type="hidden" id="owmApiKey">
-      <!-- State A: no key — input + confirm -->
-      <div id="owmKeyInput">
-        <div class="field" style="gap:4px;">
-          <label data-i18n="label.owmApiKey" style="min-width:unset; white-space:nowrap;">OWM API Key:</label>
-          <input type="text" id="owmKeyField" placeholder="your-api-key" style="flex:1; font-size:11px;" autocomplete="off">
-          <button id="owmKeyConfirm" class="btn-owm-confirm" title="Confirm"><i class="fa-solid fa-check"></i></button>
+      <div class="api-key-list">
+
+        <!-- OpenWeatherMap -->
+        <div class="api-key-row">
+          <div class="api-key-head">
+            <i class="fa-solid fa-cloud-sun" style="color:#3b82f6;"></i>
+            <a href="https://home.openweathermap.org/api_keys" target="_blank" rel="noopener"
+               class="api-key-name">OpenWeatherMap</a>
+            <span class="api-key-hint" data-i18n="label.owmApiKeyHint">free key for weather overlay layers</span>
+          </div>
+          <!-- Hidden field keeps the value for CONFIG_FIELDS -->
+          <input type="hidden" id="owmApiKey">
+          <!-- State A: no key — input + confirm -->
+          <div id="owmKeyInput">
+            <div class="field" style="gap:4px;">
+              <input type="text" id="owmKeyField" placeholder="your-api-key" style="flex:1; font-size:11px;" autocomplete="off">
+              <button id="owmKeyConfirm" class="btn-owm-confirm" title="Confirm"><i class="fa-solid fa-check"></i></button>
+            </div>
+            <div id="owmKeyError" class="owm-key-error"></div>
+          </div>
+          <!-- State B: key set — badge + trash -->
+          <div id="owmKeyBadge" style="display:none;">
+            <div class="owm-badge-row">
+              <i class="fa-solid fa-key" style="color:#22c55e;"></i>
+              <span class="owm-badge-text"><span data-i18n="label.owmConfigured">API key configured</span></span>
+              <button id="owmKeyDelete" class="btn-owm-delete" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
+            </div>
+          </div>
         </div>
-        <div style="font-size:10px; color:#94a3b8; margin-top:2px;">
-          <a href="https://home.openweathermap.org/api_keys" target="_blank" rel="noopener" style="color:#6366f1;">OpenWeatherMap</a>
-          — <span data-i18n="label.owmApiKeyHint">free key for weather overlay layers</span>
-        </div>
-        <div id="owmKeyError" class="owm-key-error"></div>
-      </div>
-      <!-- State B: key set — badge + trash -->
-      <div id="owmKeyBadge" style="display:none;">
-        <div class="owm-badge-row">
-          <i class="fa-solid fa-key" style="color:#22c55e;"></i>
-          <span class="owm-badge-text"><span data-i18n="label.owmConfigured">API key configured</span></span>
-          <button id="owmKeyDelete" class="btn-owm-delete" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
-        </div>
+
       </div>
     </div>
   </details>

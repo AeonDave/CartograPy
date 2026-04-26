@@ -124,7 +124,7 @@
   "msg.confirmDelete": "Eliminare \"{0}\"?",
   "msg.gridStep": "passo",
 
-  "wpIcon.pin": "Pin",
+  "wpIcon.pin": "Spillo",
   "wpIcon.flag": "Bandiera",
   "wpIcon.camp": "Campo",
   "wpIcon.mountain": "Montagna",
@@ -167,8 +167,7 @@
   "weather.snow": "Neve",
   "weather.storm": "Temporale",
 
-  "section.weather": "Meteo",
-  "label.owmApiKey": "API Key OWM:",
+  "section.apiKeys": "Chiavi API",
   "label.owmApiKeyHint": "chiave gratuita per i layer meteo sulla mappa",
   "label.owmConfigured": "API key configurata",
   "label.owmInvalidKey": "API key non valida \u2014 controlla e riprova",
@@ -186,7 +185,14 @@
   "weather.hourDetail": "Dettaglio ora: {0}:00",
 
   "overlay.seamarks": "Segnali nautici (OpenSeaMap)",
+  "overlay.weather": "Pannello meteo",
   "overlay.hiking": "Sentieri escursionistici (Waymarked)",
+  "overlay.mtb": "Percorsi MTB (Waymarked)",
+  "overlay.cycling": "Itinerari ciclistici (Waymarked)",
+  "overlay.slopes": "Piste da sci (Waymarked)",
+  "overlay.riding": "Sentieri equestri (Waymarked)",
+  "overlay.hillshade": "Ombreggiatura rilievo (Esri)",
+  "overlay.snowmap": "Piste da sci (OpenSnowMap)",
   "overlay.railway": "Ferrovie (OpenRailwayMap)",
   "overlay.rainviewer": "Radar pioggia (RainViewer)",
   "overlay.owmPrec": "Precipitazioni (OWM)",

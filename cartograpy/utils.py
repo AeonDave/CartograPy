@@ -103,3 +103,20 @@ def latlon_to_pixel(
     px = int(img_w_px / 2.0 + dx_m / ground_w_m * img_w_px)
     py = int(img_h_px / 2.0 - dy_m / ground_h_m * img_h_px)
     return px, py
+
+
+def compute_sheet_layout(n: int, landscape: bool) -> tuple[int, int]:
+    """Return ``(cols, rows)`` for *n* sheets arranged near-square.
+
+    Landscape orientation favours more columns than rows; portrait favours
+    more rows than columns. ``n <= 1`` always returns ``(1, 1)``.
+    """
+    if n <= 1:
+        return (1, 1)
+    if landscape:
+        cols = math.ceil(math.sqrt(n))
+        rows = math.ceil(n / cols)
+    else:
+        rows = math.ceil(math.sqrt(n))
+        cols = math.ceil(n / rows)
+    return (cols, rows)

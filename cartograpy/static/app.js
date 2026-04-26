@@ -55,6 +55,10 @@ let activeTool = null;  // null | 'ruler' | 'protractor' | 'line' | 'compass' | 
 let searchResults = [];
 let searchHistory = [];  // {name, lat, lon}
 let suggestTimeout = null;
+let suggestController = null;     // aborts in-flight /api/suggest
+let suggestData = [];             // last suggestion payload (used by delegation)
+const MAX_SUGGESTIONS = 8;
+const MAX_HISTORY = 10;
 
 // Ruler
 let rulerPoints = [];
@@ -149,9 +153,15 @@ const tileLayers = {
     maxZoom: 19, attribution: '© Esri' }),
   'Esri WorldImagery': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     maxZoom: 19, attribution: '© Esri' }),
+  'Esri NatGeo World Map': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 16, attribution: '© Esri / National Geographic' }),
+  'Esri Ocean Basemap': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 13, attribution: '© Esri / GEBCO / NOAA' }),
   'CartoDB Positron': L.tileLayer('https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
     maxZoom: 20, attribution: '© OSM © CARTO' }),
   'CartoDB Voyager': L.tileLayer('https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png', {
+    maxZoom: 20, attribution: '© OSM © CARTO' }),
+  'CartoDB Voyager NoLabels': L.tileLayer('https://a.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png', {
     maxZoom: 20, attribution: '© OSM © CARTO' }),
   'CartoDB Dark': L.tileLayer('https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', {
     maxZoom: 20, attribution: '© OSM © CARTO' }),
@@ -173,6 +183,12 @@ const tileLayers = {
     maxZoom: 20, attribution: '© basemap.at' }),
   'NL Kadaster': L.tileLayer('https://service.pdok.nl/brt/achtergrondkaart/wmts/v2_0/standaard/EPSG:3857/{z}/{x}/{y}.png', {
     maxZoom: 19, attribution: '© Kadaster' }),
+  'Kartverket Topo (NO)': L.tileLayer('https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png', {
+    maxZoom: 18, attribution: '© Kartverket' }),
+  'Kartverket Topo Greyscale (NO)': L.tileLayer('https://cache.kartverket.no/v1/wmts/1.0.0/topograatone/default/webmercator/{z}/{y}/{x}.png', {
+    maxZoom: 18, attribution: '© Kartverket' }),
+  'IGN España MTN': L.tileLayer('https://www.ign.es/wmts/mapa-raster?layer=MTN&style=default&tilematrixset=GoogleMapsCompatible&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image/jpeg&TileMatrix={z}&TileCol={x}&TileRow={y}', {
+    maxZoom: 18, attribution: '© IGN España' }),
   'USGS Topo': L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}', {
     maxZoom: 20, attribution: '© USGS' }),
   'USGS Imagery': L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}', {
@@ -235,19 +251,9 @@ document.getElementById('toggleSidebar').addEventListener('click', () => {
   setTimeout(() => map.invalidateSize(), 300);
 });
 
-// Sidebar backdrop (close on tap)
-document.getElementById('sidebarBackdrop').addEventListener('click', () => {
-  document.getElementById('sidebar').classList.add('collapsed');
-  document.body.classList.add('sidebar-hidden');
-  setTimeout(() => map.invalidateSize(), 300);
-});
-
-// Close button inside sidebar header (for mobile full-width)
-document.getElementById('closeSidebar').addEventListener('click', () => {
-  document.getElementById('sidebar').classList.add('collapsed');
-  document.body.classList.add('sidebar-hidden');
-  setTimeout(() => map.invalidateSize(), 300);
-});
+// Close button + backdrop tap → same behaviour as `closeSidebarMobile()`.
+document.getElementById('sidebarBackdrop').addEventListener('click', () => closeSidebarMobile());
+document.getElementById('closeSidebar').addEventListener('click', () => closeSidebarMobile());
 
 // Auto-collapse sidebar on mobile at load
 if (window.innerWidth <= 768) {
@@ -268,6 +274,18 @@ $search.addEventListener('input', () => {
   const q = $search.value.trim();
   if (q.length < 3) { hideSuggestions(); return; }
   suggestTimeout = setTimeout(() => fetchSuggestions(q), 350);
+});
+
+// Delegated click handler for autocomplete suggestions (one listener for the
+// whole list — survives DOM rebuilds).
+document.getElementById('searchSuggestions').addEventListener('click', (e) => {
+  const item = e.target.closest('.sg-item');
+  if (!item) return;
+  const d = suggestData[parseInt(item.dataset.idx, 10)];
+  if (!d) return;
+  $search.value = d.name.substring(0, 80);
+  hideSuggestions();
+  goToPlace(d.name, d.lat, d.lon);
 });
 $scale.addEventListener('change', updateOverlays);
 $paper.addEventListener('change', updateOverlays);
@@ -302,6 +320,7 @@ async function doSearch() {
   status(t('status.searching'));
   try {
     const res = await fetch('/api/search?q=' + encodeURIComponent(q));
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     searchResults = await res.json();
     if (searchResults.error) throw new Error(searchResults.error);
     if (!searchResults.length) { status(t('status.noResults')); $results.style.display='none'; return; }
@@ -323,35 +342,43 @@ function goToPlace(name, lat, lon) {
   const short = name.substring(0, 80);
   if (!searchHistory.some(h => h.name === short && Math.abs(h.lat - lat) < 0.0001))
     searchHistory.unshift({ name: short, lat, lon });
-  if (searchHistory.length > 10) searchHistory.pop();
+  if (searchHistory.length > MAX_HISTORY) searchHistory.pop();
   renderHistory();
   scheduleSaveConfig();
-  // Weather widget
+  // Weather widget — auto-activate the weather overlay on a successful search.
   _weatherLat = lat; _weatherLon = lon;
-  if (typeof fetchWeather === 'function') fetchWeather(lat, lon);
+  if (!_selectedOverlays.has('weather')) {
+    _selectedOverlays.add('weather');
+    if (typeof populateOverlayPanel === 'function') populateOverlayPanel();
+    if (typeof applyOverlays === 'function') applyOverlays();
+    scheduleSaveConfig();
+  } else if (typeof fetchWeather === 'function') {
+    // Already active — just refresh for the new location.
+    fetchWeather(lat, lon);
+  }
 }
 
 async function fetchSuggestions(q) {
+  // Cancel any in-flight request so a slow earlier reply can't overwrite a newer one.
+  if (suggestController) suggestController.abort();
+  suggestController = new AbortController();
   try {
-    const res = await fetch('/api/suggest?q=' + encodeURIComponent(q) + '&lang=' + encodeURIComponent(_currentLang));
+    const res = await fetch(
+      '/api/suggest?q=' + encodeURIComponent(q) + '&lang=' + encodeURIComponent(_currentLang),
+      { signal: suggestController.signal },
+    );
+    if (!res.ok) { hideSuggestions(); return; }
     const data = await res.json();
     if (data.error || !data.length) { hideSuggestions(); return; }
+    suggestData = data.slice(0, MAX_SUGGESTIONS);
     const box = document.getElementById('searchSuggestions');
-    box.innerHTML = data.slice(0, 8).map((r, i) =>
+    box.innerHTML = suggestData.map((r, i) =>
       `<div class="sg-item" data-idx="${i}">${r.name.substring(0, 100)}</div>`
     ).join('');
     box.style.display = 'block';
-    // Store for click
-    box._data = data.slice(0, 8);
-    box.querySelectorAll('.sg-item').forEach(el => {
-      el.addEventListener('click', () => {
-        const d = box._data[parseInt(el.dataset.idx)];
-        $search.value = d.name.substring(0, 80);
-        hideSuggestions();
-        goToPlace(d.name, d.lat, d.lon);
-      });
-    });
-  } catch(e) { hideSuggestions(); }
+  } catch(e) {
+    if (e.name !== 'AbortError') hideSuggestions();
+  }
 }
 
 function hideSuggestions() {
@@ -609,10 +636,11 @@ function renderToolHistory(toolName, histArr, color) {
   container.innerHTML = '';
   histArr.forEach((entry, i) => {
     const row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:3px 6px;margin-bottom:2px;border-radius:4px;font-size:12px;font-weight:600;background:#f1f5f9;color:' + color;
+    row.className = 'tool-hist-row';
+    row.style.color = color;
     const txt = document.createElement('span');
+    txt.className = 'tool-hist-text';
     txt.textContent = `#${i + 1}  ${entry.text}`;
-    txt.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;cursor:pointer';
     txt.title = t('msg.clickToCenter');
     txt.addEventListener('click', () => {
       // Zoom to the drawing's bounds
@@ -620,11 +648,9 @@ function renderToolHistory(toolName, histArr, color) {
       try { map.fitBounds(fg.getBounds().pad(0.2)); } catch(e) {}
     });
     const del = document.createElement('span');
+    del.className = 'tool-hist-del';
     del.innerHTML = '<i class="fa-solid fa-xmark"></i>';
     del.title = t('msg.delete');
-    del.style.cssText = 'cursor:pointer;margin-left:6px;color:#94a3b8;padding:0 3px';
-    del.addEventListener('mouseenter', () => del.style.color = '#dc2626');
-    del.addEventListener('mouseleave', () => del.style.color = '#94a3b8');
     del.addEventListener('click', () => {
       entry.layers.forEach(l => { try { map.removeLayer(l); } catch(e) {} });
       histArr.splice(i, 1);
@@ -1612,7 +1638,7 @@ function gatherConfig() {
   for (const [k, def] of Object.entries(CONFIG_FIELDS)) {
     cfg[k] = def.el()[def.type];
   }
-  cfg.searchHistory = searchHistory.slice(0, 10);
+  cfg.searchHistory = searchHistory.slice(0, MAX_HISTORY);
   cfg.overlays = Array.from(_selectedOverlays);
   return cfg;
 }
@@ -1649,7 +1675,7 @@ async function loadConfig() {
     await loadLanguage(document.getElementById('language').value || 'en');
     // Restore search history
     if (Array.isArray(cfg.searchHistory)) {
-      searchHistory = cfg.searchHistory.slice(0, 10);
+      searchHistory = cfg.searchHistory.slice(0, MAX_HISTORY);
       renderHistory();
     }
     // Sync OWM key UI state
@@ -1936,6 +1962,13 @@ $weatherDate.addEventListener('change', () => {
 });
 document.getElementById('weatherClose').addEventListener('click', () => {
   $weatherCard.classList.remove('visible');
+  // Keep the overlay panel in sync with the card visibility.
+  if (_selectedOverlays.has('weather')) {
+    _selectedOverlays.delete('weather');
+    _activeOverlays.delete('weather');
+    if (typeof populateOverlayPanel === 'function') populateOverlayPanel();
+    scheduleSaveConfig();
+  }
 });
 
 // "Now" button — reset date to today and hour to current
@@ -2239,15 +2272,46 @@ async function fetchRainviewerData() {
   }
 }
 
-// Overlay registry. Each overlay produces a Leaflet layer (sync or async).
+// Overlay registry. Each overlay produces a Leaflet layer (sync or async) or
+// is a `kind:'ui'` entry that toggles a UI element via show()/hide() callbacks.
 // `requires:'owm'` means it depends on a configured OpenWeatherMap key.
 const OVERLAY_DEFS = [
+  { id: 'weather', labelKey: 'overlay.weather', kind: 'ui',
+    show: () => {
+      $weatherCard.classList.add('visible');
+      // Manual activation always uses the current map center (the red print
+      // rectangle is centered on it). Auto-activation from a search has
+      // already filled fetchWeather() with the searched coordinates before
+      // this hook runs, so we just refresh against the live center here.
+      const c = map.getCenter();
+      _weatherLat = c.lat; _weatherLon = c.lng;
+      if (typeof fetchWeather === 'function') fetchWeather(c.lat, c.lng);
+    },
+    hide: () => { $weatherCard.classList.remove('visible'); } },
   { id: 'seamarks', labelKey: 'overlay.seamarks',
     factory: () => L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',
       { maxZoom: 18, opacity: 0.9, zIndex: 410, attribution: '© OpenSeaMap (CC-BY-SA)' }) },
   { id: 'hiking', labelKey: 'overlay.hiking',
     factory: () => L.tileLayer('https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png',
       { maxZoom: 18, opacity: 0.9, zIndex: 410, attribution: '© waymarkedtrails.org (CC-BY-SA)' }) },
+  { id: 'mtb', labelKey: 'overlay.mtb',
+    factory: () => L.tileLayer('https://tile.waymarkedtrails.org/mtb/{z}/{x}/{y}.png',
+      { maxZoom: 18, opacity: 0.9, zIndex: 410, attribution: '© waymarkedtrails.org (CC-BY-SA)' }) },
+  { id: 'cycling', labelKey: 'overlay.cycling',
+    factory: () => L.tileLayer('https://tile.waymarkedtrails.org/cycling/{z}/{x}/{y}.png',
+      { maxZoom: 18, opacity: 0.9, zIndex: 410, attribution: '© waymarkedtrails.org (CC-BY-SA)' }) },
+  { id: 'slopes', labelKey: 'overlay.slopes',
+    factory: () => L.tileLayer('https://tile.waymarkedtrails.org/slopes/{z}/{x}/{y}.png',
+      { maxZoom: 18, opacity: 0.9, zIndex: 410, attribution: '© waymarkedtrails.org (CC-BY-SA)' }) },
+  { id: 'riding', labelKey: 'overlay.riding',
+    factory: () => L.tileLayer('https://tile.waymarkedtrails.org/riding/{z}/{x}/{y}.png',
+      { maxZoom: 18, opacity: 0.9, zIndex: 410, attribution: '© waymarkedtrails.org (CC-BY-SA)' }) },
+  { id: 'hillshade', labelKey: 'overlay.hillshade',
+    factory: () => L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',
+      { maxZoom: 16, opacity: 0.5, zIndex: 405, attribution: '© Esri' }) },
+  { id: 'snowmap', labelKey: 'overlay.snowmap',
+    factory: () => L.tileLayer('https://tiles.opensnowmap.org/pistes/{z}/{x}/{y}.png',
+      { maxZoom: 18, opacity: 0.9, zIndex: 410, attribution: '© www.opensnowmap.org (CC-BY-SA)' }) },
   { id: 'railway', labelKey: 'overlay.railway',
     factory: () => L.tileLayer('https://a.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png',
       { maxZoom: 19, opacity: 0.9, zIndex: 410, attribution: '© OpenRailwayMap (CC-BY-SA)' }) },
@@ -2294,6 +2358,12 @@ async function _addOverlay(id) {
   if (_activeOverlays.has(id)) return;
   const def = OVERLAY_DEFS.find(d => d.id === id);
   if (!def) return;
+  // UI overlays (e.g. weather card): no Leaflet layer, just a show/hide hook.
+  if (def.kind === 'ui') {
+    if (typeof def.show === 'function') def.show();
+    _activeOverlays.set(id, { kind: 'ui', def });
+    return;
+  }
   let layer = null;
   if (def.requires === 'owm') {
     layer = _makeOwmLayer(def.owmLayer);
@@ -2308,9 +2378,13 @@ async function _addOverlay(id) {
 }
 
 function _removeOverlay(id) {
-  const layer = _activeOverlays.get(id);
-  if (!layer) return;
-  map.removeLayer(layer);
+  const entry = _activeOverlays.get(id);
+  if (!entry) return;
+  if (entry && entry.kind === 'ui') {
+    if (typeof entry.def.hide === 'function') entry.def.hide();
+  } else {
+    map.removeLayer(entry);
+  }
   _activeOverlays.delete(id);
 }
 

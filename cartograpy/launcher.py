@@ -87,28 +87,28 @@ class LauncherApp:
         buttons = tk.Frame(frame, pady=14)
         buttons.pack(fill="x")
 
-        self.open_button = tk.Button(buttons, text="Apri browser", width=14, command=self.open_browser)
+        self.open_button = tk.Button(buttons, text="Open browser", width=14, command=self.open_browser)
         self.open_button.grid(row=0, column=0, padx=(0, 8), pady=(0, 8))
 
-        cfg_button = tk.Button(buttons, text="Apri config", width=14, command=self.open_config)
+        cfg_button = tk.Button(buttons, text="Open config", width=14, command=self.open_config)
         cfg_button.grid(row=0, column=1, padx=(0, 8), pady=(0, 8))
 
-        folder_button = tk.Button(buttons, text="Apri cartella dati", width=16, command=self.open_data_dir)
+        folder_button = tk.Button(buttons, text="Open data folder", width=16, command=self.open_data_dir)
         folder_button.grid(row=0, column=2, pady=(0, 8))
 
         self.hide_button = tk.Button(
             buttons,
-            text="Nascondi nel tray",
+            text="Hide to tray",
             width=14,
             command=self.hide_to_tray,
             state=("normal" if pystray else "disabled"),
         )
         self.hide_button.grid(row=1, column=0, padx=(0, 8))
 
-        self.stop_button = tk.Button(buttons, text="Ferma server", width=14, command=self.stop_server)
+        self.stop_button = tk.Button(buttons, text="Stop server", width=14, command=self.stop_server)
         self.stop_button.grid(row=1, column=1, padx=(0, 8))
 
-        exit_button = tk.Button(buttons, text="Esci", width=16, command=self.exit_app)
+        exit_button = tk.Button(buttons, text="Exit", width=16, command=self.exit_app)
         exit_button.grid(row=1, column=2)
 
         tray_note = tk.Label(frame, textvariable=self.tray_var, fg="#64748b", wraplength=390, justify="left")
@@ -134,7 +134,7 @@ class LauncherApp:
         self.server_running = True
         self.server_thread = threading.Thread(target=self._serve_forever, daemon=True)
         self.server_thread.start()
-        self.status_var.set(f"Server attivo su {self.settings.host}:{self.settings.port}")
+        self.status_var.set(f"Server running on {self.settings.host}:{self.settings.port}")
         if self.settings.open_browser:
             open_browser_later(self.url, self.settings.browser_delay_sec)
 
@@ -156,14 +156,14 @@ class LauncherApp:
 
             if event == "error":
                 self.server_running = False
-                self.status_var.set("Server terminato con errore")
+                self.status_var.set("Server stopped with error")
                 self.detail_var.set(payload)
                 self.stop_button.configure(state="disabled")
                 self.hide_button.configure(state="disabled")
                 messagebox.showerror("CartograPy server", payload, parent=self.root)
             elif event == "stopped":
                 self.server_running = False
-                self.status_var.set("Server fermato")
+                self.status_var.set("Server stopped")
                 self.detail_var.set(self.url)
                 self.stop_button.configure(state="disabled")
                 self.hide_button.configure(state="disabled")
@@ -192,7 +192,7 @@ class LauncherApp:
         self.root.withdraw()
         if self.tray_icon is not None:
             try:
-                self.tray_icon.notify("CartograPy continua a servire localhost in background.")
+                self.tray_icon.notify("CartograPy keeps serving localhost in background.")
             except Exception:
                 pass
 
@@ -204,7 +204,7 @@ class LauncherApp:
         """Stop the local HTTP server but keep the launcher window alive."""
         if not self.server_running or self.stop_thread is not None:
             return
-        self.status_var.set("Arresto del server in corso...")
+        self.status_var.set("Stopping server...")
         self.stop_button.configure(state="disabled")
         self.stop_thread = threading.Thread(target=self._shutdown_server, daemon=True)
         self.stop_thread.start()

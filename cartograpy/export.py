@@ -28,6 +28,7 @@ from .utils import (
     PAPER_SIZES,
     TILE_SIZE,
     auto_grid_spacing,
+    compute_sheet_layout,
     deg2num,
     ground_resolution,
     latlon_to_pixel,
@@ -92,7 +93,7 @@ def export_map_pdf(
     sheets = max(1, sheets)
 
     # ---- sheet layout ----------------------------------------------------
-    cols, rows = _compute_sheet_layout(sheets, landscape)
+    cols, rows = compute_sheet_layout(sheets, landscape)
 
     # ---- per-sheet geometry ----------------------------------------------
     pw_mm, ph_mm = PAPER_SIZES[paper]
@@ -351,19 +352,6 @@ def export_map_pdf(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-def _compute_sheet_layout(n: int, landscape: bool) -> tuple[int, int]:
-    """Return (cols, rows) for *n* sheets."""
-    if n <= 1:
-        return (1, 1)
-    if landscape:
-        cols = math.ceil(math.sqrt(n))
-        rows = math.ceil(n / cols)
-    else:
-        rows = math.ceil(math.sqrt(n))
-        cols = math.ceil(n / rows)
-    return (cols, rows)
-
 
 def _outside(x1, y1, x2, y2, w, h) -> bool:
     """True if the line is entirely outside the image bounds."""

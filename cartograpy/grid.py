@@ -24,6 +24,7 @@ Supported grid systems
 from __future__ import annotations
 
 import math
+import re
 from dataclasses import dataclass, field
 
 from pyproj import Transformer
@@ -560,3 +561,125 @@ def compute_grid(
         )
 
     return gi
+
+
+# ==================================================================
+# Coordinate parsing (string → lat/lon)
+# ==================================================================
+
+# Single-coordinate token: optional hemisphere/sign, degrees, optional minutes
+# and seconds with the usual punctuation, optional trailing hemisphere.
+_LATLON_TOKEN_RE = re.compile(
+    r"([NSEWnsew+-])?\s*"                       # hemisphere or sign
+    r"(\d+(?:\.\d+)?)\s*[°d]?\s*"               # degrees
+    r"(?:(\d+(?:\.\d+)?)\s*[′'m]?\s*"           # minutes (optional)
+    r"(?:(\d+(?:\.\d+)?)\s*[″\"s]?\s*)?)?"      # seconds (optional)
+    r"([NSEWnsew])?"                             # trailing hemisphere
+)
+
+
+def parse_latlon_auto(raw: str) -> tuple[float, float]:
+    """Auto-detect and parse a lat/lon pair in DD, DM or DMS.
+
+    Accepts hemisphere letters (``N/S/E/W``), explicit ``+/-`` signs,
+    degree/minute/second symbols (``° ' "`` and ASCII variants), and a
+    plain comma-/whitespace-separated decimal fallback.
+    """
+    raw = raw.strip()
+
+    coords: list[float] = []
+    for pre_hem, deg, mins, secs, post_hem in _LATLON_TOKEN_RE.findall(raw):
+        if not deg:
+            continue
+        d = float(deg)
+        if mins:
+            d += float(mins) / 60.0
+        if secs:
+            d += float(secs) / 3600.0
+        hem = (pre_hem or post_hem or "").upper()
+        if hem in ("S", "W", "-"):
+            d = -d
+        coords.append(d)
+
+    if len(coords) >= 2:
+        return coords[0], coords[1]
+
+    # Fallback: comma/space separated decimals
+    nums: list[float] = []
+    for p in re.split(r"[\s,]+", raw):
+        try:
+            nums.append(float(p))
+        except ValueError:
+            pass
+    if len(nums) >= 2:
+        return nums[0], nums[1]
+
+    raise ValueError("Unrecognized lat/lon format")
+
+
+def _transform_to_wgs84(epsg: int, easting: float, northing: float) -> tuple[float, float]:
+    t = Transformer.from_crs(f"EPSG:{epsg}", "EPSG:4326", always_xy=True)
+    lon, lat = t.transform(easting, northing)
+    return lat, lon
+
+
+def parse_coords(grid_type: str, raw: str) -> tuple[float, float]:
+    """Parse a coordinate string in the given grid system → ``(lat, lon)``.
+
+    Supports the same systems exposed by :func:`compute_grid`. ``latlon``
+    delegates to :func:`parse_latlon_auto`. Raises :class:`ValueError` on
+    malformed input.
+    """
+    raw = raw.strip()
+
+    if grid_type == "utm":
+        m = re.match(r"(\d{1,2})\s*([A-Za-z])\s+([\d.]+)\s+([\d.]+)", raw)
+        if not m:
+            raise ValueError(
+                "UTM format: zone band easting northing (e.g. 32T 581392 5082439)"
+            )
+        zone_num = int(m[1])
+        band = m[2].upper()
+        easting = float(m[3])
+        northing = float(m[4])
+        epsg = 32600 + zone_num if band >= 'N' else 32700 + zone_num
+        return _transform_to_wgs84(epsg, easting, northing)
+
+    if grid_type == "mgrs":
+        try:
+            import mgrs as mgrs_mod
+        except ImportError as exc:
+            raise ValueError(
+                "MGRS requires the 'mgrs' package. Install it with: pip install mgrs"
+            ) from exc
+        lat, lon = mgrs_mod.MGRS().toLatLon(raw.replace(" ", ""))
+        return lat, lon
+
+    if grid_type == "gauss_boaga":
+        parts = raw.split()
+        if len(parts) < 2:
+            raise ValueError("Format: easting northing (e.g. 1681392 5082439)")
+        e, n = float(parts[0]), float(parts[1])
+        epsg = 3003 if e < 2520000 else 3004
+        return _transform_to_wgs84(epsg, e, n)
+
+    if grid_type == "gauss_krueger":
+        parts = raw.split()
+        if len(parts) < 2:
+            raise ValueError("Format: easting northing (e.g. 3581392 5082439)")
+        e, n = float(parts[0]), float(parts[1])
+        # Auto-detect zone from Rechtswert leading digit (zone 2..5).
+        zone_digit = int(e / 1_000_000)
+        epsg = 31464 + zone_digit
+        return _transform_to_wgs84(epsg, e, n)
+
+    if grid_type in _PROJECTED_GRIDS:
+        parts = raw.split()
+        if len(parts) < 2:
+            raise ValueError("Format: easting northing")
+        e, n = float(parts[0]), float(parts[1])
+        epsg = _PROJECTED_GRIDS[grid_type][0]
+        return _transform_to_wgs84(epsg, e, n)
+
+    # Default: lat/lon in any common human format
+    return parse_latlon_auto(raw)
