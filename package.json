@@ -1,0 +1,13 @@
+{
+  "name": "cartograpy-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Frontend bundle for CartograPy. Run `npm install` then `npm run build` to regenerate cartograpy/static/app.js from sources in cartograpy/static/src/.",
+  "scripts": {
+    "build": "esbuild cartograpy/static/src/main.js --bundle --outfile=cartograpy/static/app.js --format=iife --target=es2020 --sourcemap=linked --legal-comments=none",
+    "watch": "esbuild cartograpy/static/src/main.js --bundle --outfile=cartograpy/static/app.js --format=iife --target=es2020 --sourcemap=linked --legal-comments=none --watch"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  }
+}

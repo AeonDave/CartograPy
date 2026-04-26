@@ -71,50 +71,10 @@
       </div>
       <div class="field">
         <label data-i18n="label.source">Source:</label>
-        <select id="source">
-          <optgroup label="── Global ──" data-i18n-label="source.global">
-          <option value="OpenTopoMap">OpenTopoMap</option>
-          <option value="OpenStreetMap">OpenStreetMap</option>
-          <option value="CyclOSM">CyclOSM</option>
-          <option value="OSM DE">OSM DE</option>
-          <option value="OSM France">OSM France</option>
-          <option value="OSM HOT" data-i18n="source.osmHot">OSM HOT (Humanitarian)</option>
-          <option value="OPNVKarte" data-i18n="source.opnvkarte">OPNVKarte (Transit)</option>
-          </optgroup>
-          <optgroup label="── Esri ──" data-i18n-label="source.esri">
-          <option value="Esri WorldStreetMap" data-i18n="source.esriStreets">Esri Streets</option>
-          <option value="Esri WorldTopoMap" data-i18n="source.esriTopo">Esri Topo</option>
-          <option value="Esri WorldImagery" data-i18n="source.esriSatellite">Esri Satellite</option>
-          <option value="Esri NatGeo World Map">Esri NatGeo</option>
-          <option value="Esri Ocean Basemap">Esri Ocean Basemap</option>
-          </optgroup>
-          <optgroup label="── CartoDB ──" data-i18n-label="source.cartodb">
-          <option value="CartoDB Positron" data-i18n="source.cartodbLight">CartoDB Positron (light)</option>
-          <option value="CartoDB Voyager">CartoDB Voyager</option>
-          <option value="CartoDB Voyager NoLabels">CartoDB Voyager (no labels)</option>
-          <option value="CartoDB Dark">CartoDB Dark</option>
-          </optgroup>
-          <optgroup label="── Marine ──" data-i18n-label="source.marine">
-          <option value="EMODnet Bathymetry" data-i18n="source.emodnet">EMODnet Bathymetry</option>
-          <option value="GEBCO" data-i18n="source.gebco">GEBCO (global bathymetry)</option>
-          </optgroup>
-          <optgroup label="── Regional ──" data-i18n-label="source.regional">
-          <option value="TopPlusOpen">TopPlusOpen (DE)</option>
-          <option value="BaseMap DE">BaseMap DE</option>
-          <option value="GeoportailFrance">Géoportail France</option>
-          <option value="GeoportailFrance Ortho" data-i18n="source.geopFrOrtho">Géoportail Ortho</option>
-          <option value="Swisstopo">Swisstopo (CH)</option>
-          <option value="Swisstopo Satellite">Swisstopo Satellite</option>
-          <option value="BasemapAT">BasemapAT (Austria)</option>
-          <option value="BasemapAT Ortho" data-i18n="source.basemapAtOrtho">BasemapAT Ortho</option>
-          <option value="NL Kadaster">NL Kadaster</option>
-          <option value="Kartverket Topo (NO)">Kartverket Topo (NO)</option>
-          <option value="Kartverket Topo Greyscale (NO)">Kartverket Topo Greyscale (NO)</option>
-          <option value="IGN España MTN">IGN España MTN</option>
-          <option value="USGS Topo">USGS Topo (USA)</option>
-          <option value="USGS Imagery">USGS Imagery (USA)</option>
-          </optgroup>
-        </select>
+        <!-- Options + optgroups are populated dynamically from /api/constants
+             (see loadSources() in app.js). The single source of truth is
+             TILE_SOURCES in cartograpy/tiles.py. -->
+        <select id="source"></select>
       </div>
       <div class="field">
         <label data-i18n="label.dpi">DPI:</label>

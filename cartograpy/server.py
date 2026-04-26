@@ -17,7 +17,7 @@ import threading
 import webbrowser
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 import urllib.request
 from io import BytesIO
@@ -39,6 +39,56 @@ _TOOLS_DIR = _DATA / "tools"
 _TOOLS_DIR.mkdir(exist_ok=True)
 
 _SAFE_NAME_RE = re.compile(r'[^a-zA-Z0-9_àèéìòùÀÈÉÌÒÙçÇñÑ -]')
+
+# Source group ordering + i18n keys for the `<select id="source">` optgroups.
+# Adding a new group key here is enough to expose it on the frontend; tile
+# entries opt in via `"group": "<key>"` in :data:`TILE_SOURCES`.
+_SOURCE_GROUPS: tuple[tuple[str, str], ...] = (
+    ("global",   "source.global"),
+    ("esri",     "source.esri"),
+    ("cartodb",  "source.cartodb"),
+    ("marine",   "source.marine"),
+    ("regional", "source.regional"),
+)
+
+
+def _build_sources_payload() -> dict:
+    """Serialize :data:`TILE_SOURCES` for the frontend.
+
+    Base layers are returned in declaration order, grouped under their ``group``
+    key; overlays expose a stable ``id`` consumed by the overlay panel. WMS
+    sources are rewritten to the local proxy URL so Leaflet can fetch them
+    through the shared :class:`TileCache`.
+    """
+    base: list[dict] = []
+    overlays: list[dict] = []
+    for name, cfg in TILE_SOURCES.items():
+        if cfg.get("type") == "wms":
+            url = f"/api/tile/{quote(name, safe='')}/{{z}}/{{x}}/{{y}}.png"
+        else:
+            url = cfg.get("url", "")
+        common = {
+            "name": name,
+            "url": url,
+            "max_zoom": cfg.get("max_zoom", 19),
+            "attribution": cfg.get("attribution", ""),
+            "label_key": cfg.get("label_key"),
+            "display_name": cfg.get("display_name"),
+        }
+        if cfg.get("overlay"):
+            overlays.append({
+                **common,
+                "id": cfg.get("overlay_id", name),
+                "opacity": cfg.get("opacity", 0.9),
+                "z_index": cfg.get("z_index", 410),
+            })
+        else:
+            base.append({**common, "group": cfg.get("group", "global")})
+    return {
+        "base": base,
+        "overlays": overlays,
+        "groups": [{"key": k, "label_key": lk} for k, lk in _SOURCE_GROUPS],
+    }
 
 
 def _sanitize_filename(name: str) -> str:
@@ -287,6 +337,7 @@ class _Handler(BaseHTTPRequestHandler):
             "scales": SCALES,
             "papers": {k: list(v) for k, v in PAPER_SIZES.items()},
             "grid_systems": GRID_SYSTEMS,
+            "sources": _build_sources_payload(),
         })
 
     def _handle_coord2latlon(self, qs):

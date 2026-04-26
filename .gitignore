@@ -7,10 +7,9 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 
-#build
+# Build artifacts
 build/
 dist/
-*.spec
 
 # Virtual Environment
 .venv/
@@ -28,6 +27,10 @@ env/
 
 # Playwright MCP
 .playwright-mcp/
+
+# Node / esbuild
+node_modules/
+cartograpy/static/app.js.map
 
 # OS
 .DS_Store
