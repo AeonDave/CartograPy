@@ -17,15 +17,16 @@ import threading
 import webbrowser
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 import urllib.request
+from io import BytesIO
 
 from .export import export_map_pdf
 from .geocoder import autocomplete, geocode
 from .grid import GRID_SYSTEMS, compute_grid
 from .runtime import get_data_dir
-from .tiles import TileCache
+from .tiles import TileCache, TILE_SOURCES
 from .utils import PAPER_SIZES, SCALES, auto_grid_spacing
 
 _HERE = Path(__file__).resolve().parent
@@ -268,6 +269,8 @@ class _Handler(BaseHTTPRequestHandler):
             self._handle_tools_load(qs)
         elif path == "/api/weather":
             self._handle_weather(qs)
+        elif path.startswith("/api/tile/"):
+            self._handle_tile_proxy(path)
         elif path.startswith("/lang/") and path.endswith(".json"):
             lang_file = _STATIC / "lang" / Path(path[6:]).name
             self._serve_file(lang_file, "application/json; charset=utf-8")
@@ -301,6 +304,47 @@ class _Handler(BaseHTTPRequestHandler):
     # ------------------------------------------------------------------
     # API handlers
     # ------------------------------------------------------------------
+
+    def _handle_tile_proxy(self, path: str):
+        """Serve any TILE_SOURCES entry (XYZ or WMS) as a PNG tile.
+
+        Path format: ``/api/tile/<source>/<z>/<x>/<y>.png`` where ``<source>``
+        is URL-encoded. Goes through :class:`TileCache` so the disk cache is
+        shared with the PDF exporter and the in-memory cache is shared with
+        the rest of the server.
+        """
+        # Strip prefix and trim ".png"
+        rel = path[len("/api/tile/"):]
+        if rel.endswith(".png"):
+            rel = rel[:-4]
+        parts = rel.split("/")
+        if len(parts) != 4:
+            self._404()
+            return
+        try:
+            source = unquote(parts[0])
+            z = int(parts[1]); x = int(parts[2]); y = int(parts[3])
+        except (ValueError, AttributeError):
+            self._404()
+            return
+        if source not in TILE_SOURCES:
+            self._404()
+            return
+        try:
+            img = self.tile_cache.get_tile(source, z, x, y)
+        except Exception:
+            self._404()
+            return
+        buf = BytesIO()
+        img.save(buf, format="PNG")
+        data = buf.getvalue()
+        self.send_response(200)
+        self.send_header("Content-Type", "image/png")
+        self.send_header("Content-Length", str(len(data)))
+        # Long-lived cache: tiles are immutable per (source, z, x, y).
+        self.send_header("Cache-Control", "public, max-age=604800")
+        self.end_headers()
+        self.wfile.write(data)
 
     def _handle_search(self, qs):
         q = qs.get("q", [""])[0]

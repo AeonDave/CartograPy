@@ -1,15 +1,31 @@
-"""Tile downloading with on-disk cache and multiple sources."""
+"""Tile downloading with on-disk cache and multiple sources.
+
+Sources are dictionaries in :data:`TILE_SOURCES` keyed by display name.
+Each source has a ``type`` field that selects the fetch strategy:
+
+* ``"xyz"`` (default): plain ``{z}/{x}/{y}`` URL template.
+* ``"wms"``: an OGC WMS endpoint queried per tile in EPSG:3857.
+
+Adding a new protocol means adding a new ``type`` and a corresponding
+``_download_<type>`` method on :class:`TileCache`. Frontends can then
+consume any source through the unified ``GET /api/tile/...`` proxy.
+"""
 from __future__ import annotations
 
+import math
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from pathlib import Path
+from urllib.parse import urlencode
 
 import requests
 from PIL import Image
 
 from .utils import TILE_SIZE
+
+# Web Mercator (EPSG:3857) world half-extent in metres.
+_WEB_MERCATOR_HALF = 20037508.342789244
 
 # ---------------------------------------------------------------------------
 # Public tile servers (respect usage policies — cache aggressively)
@@ -134,6 +150,17 @@ TILE_SOURCES: dict[str, dict] = {
         "url": "https://tiles.emodnet-bathymetry.eu/2020/baselayer/web_mercator/{z}/{x}/{y}.png",
         "attribution": "© EMODnet Bathymetry Consortium",
         "max_zoom": 12,
+    },
+    "GEBCO": {
+        "type": "wms",
+        "wms_url": "https://wms.gebco.net/mapserv",
+        "wms_layers": "GEBCO_LATEST",
+        "wms_version": "1.3.0",
+        "wms_format": "image/png",
+        "wms_styles": "",
+        "wms_transparent": False,
+        "attribution": "GEBCO Compilation Group (© GEBCO)",
+        "max_zoom": 9,
     },
     "WaymarkedTrails Hiking": {
         "url": "https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png",
@@ -274,15 +301,66 @@ class TileCache:
         src = TILE_SOURCES.get(source)
         if src is None:
             return _placeholder()
-        url = src["url"].format(z=z, x=x, y=y)
+        kind = src.get("type", "xyz")
         try:
-            resp = self._session.get(url, timeout=15)
-            resp.raise_for_status()
-            img = Image.open(BytesIO(resp.content)).convert("RGB")
-            # persist to disk
-            path = self._disk_path(source, z, x, y)
-            path.parent.mkdir(parents=True, exist_ok=True)
-            img.save(path, "PNG")
-            return img
+            if kind == "wms":
+                img = self._download_wms(src, z, x, y)
+            else:
+                img = self._download_xyz(src, z, x, y)
         except Exception:
             return _placeholder()
+        # persist to disk
+        path = self._disk_path(source, z, x, y)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            img.save(path, "PNG")
+        except Exception:
+            pass
+        return img
+
+    def _download_xyz(self, src: dict, z: int, x: int, y: int) -> Image.Image:
+        url = src["url"].format(z=z, x=x, y=y)
+        resp = self._session.get(url, timeout=15)
+        resp.raise_for_status()
+        return Image.open(BytesIO(resp.content)).convert("RGB")
+
+    def _download_wms(self, src: dict, z: int, x: int, y: int) -> Image.Image:
+        """Build an OGC WMS GetMap request for a Web Mercator tile."""
+        # Tile bounds in EPSG:3857 metres.
+        n = 2 ** z
+        tile_size_m = (2 * _WEB_MERCATOR_HALF) / n
+        minx = -_WEB_MERCATOR_HALF + x * tile_size_m
+        maxx = minx + tile_size_m
+        maxy = _WEB_MERCATOR_HALF - y * tile_size_m
+        miny = maxy - tile_size_m
+
+        version = src.get("wms_version", "1.3.0")
+        # WMS 1.3.0 uses CRS + axis order minx,miny,maxx,maxy for EPSG:3857.
+        # WMS 1.1.1 uses SRS with the same axis order for projected CRS.
+        params = {
+            "SERVICE": "WMS",
+            "REQUEST": "GetMap",
+            "VERSION": version,
+            "LAYERS": src.get("wms_layers", ""),
+            "STYLES": src.get("wms_styles", ""),
+            "FORMAT": src.get("wms_format", "image/png"),
+            "TRANSPARENT": "TRUE" if src.get("wms_transparent") else "FALSE",
+            "WIDTH": TILE_SIZE,
+            "HEIGHT": TILE_SIZE,
+            "BBOX": f"{minx},{miny},{maxx},{maxy}",
+        }
+        if version.startswith("1.3"):
+            params["CRS"] = "EPSG:3857"
+        else:
+            params["SRS"] = "EPSG:3857"
+        # Allow per-source extra params (e.g. custom dimensions, time).
+        extra = src.get("wms_extra")
+        if isinstance(extra, dict):
+            params.update(extra)
+
+        sep = "&" if "?" in src["wms_url"] else "?"
+        url = f"{src['wms_url']}{sep}{urlencode(params)}"
+        resp = self._session.get(url, timeout=20)
+        resp.raise_for_status()
+        mode = "RGBA" if src.get("wms_transparent") else "RGB"
+        return Image.open(BytesIO(resp.content)).convert(mode)

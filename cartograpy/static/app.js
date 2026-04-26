@@ -179,6 +179,8 @@ const tileLayers = {
     maxZoom: 20, attribution: '© USGS' }),
   'EMODnet Bathymetry': L.tileLayer('https://tiles.emodnet-bathymetry.eu/2020/baselayer/web_mercator/{z}/{x}/{y}.png', {
     maxZoom: 12, attribution: '© EMODnet Bathymetry Consortium' }),
+  GEBCO: L.tileLayer('/api/tile/GEBCO/{z}/{x}/{y}.png', {
+    maxZoom: 9, attribution: 'GEBCO Compilation Group (© GEBCO)' }),
   OPNVKarte: L.tileLayer('https://tileserver.memomaps.de/tilegen/{z}/{x}/{y}.png', {
     maxZoom: 18, attribution: '© memomaps.de (CC-BY-SA)' }),
 };

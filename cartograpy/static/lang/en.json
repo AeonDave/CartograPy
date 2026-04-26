@@ -68,6 +68,7 @@
   "source.marine": "\u2500\u2500 Marine \u2500\u2500",
   "source.regional": "\u2500\u2500 Regional \u2500\u2500",
   "source.emodnet": "EMODnet Bathymetry",
+  "source.gebco": "GEBCO (global bathymetry)",
   "source.osmHot": "OSM HOT (Humanitarian)",
   "source.opnvkarte": "OPNVKarte (Transit)",
   "source.esriStreets": "Esri Streets",

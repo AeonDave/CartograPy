@@ -68,6 +68,7 @@
   "source.marine": "\u2500\u2500 Marine \u2500\u2500",
   "source.regional": "\u2500\u2500 Regionali \u2500\u2500",
   "source.emodnet": "EMODnet Batimetria",
+  "source.gebco": "GEBCO (batimetria globale)",
   "source.osmHot": "OSM HOT (Umanitario)",
   "source.opnvkarte": "OPNVKarte (Trasporti)",
   "source.esriStreets": "Esri Strade",
