@@ -130,6 +130,11 @@ TILE_SOURCES: dict[str, dict] = {
         "attribution": "© USGS",
         "max_zoom": 20,
     },
+    "EMODnet Bathymetry": {
+        "url": "https://tiles.emodnet-bathymetry.eu/2020/baselayer/web_mercator/{z}/{x}/{y}.png",
+        "attribution": "© EMODnet Bathymetry Consortium",
+        "max_zoom": 12,
+    },
     "WaymarkedTrails Hiking": {
         "url": "https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png",
         "attribution": "© waymarkedtrails.org (CC-BY-SA)",
@@ -140,6 +145,12 @@ TILE_SOURCES: dict[str, dict] = {
         "url": "https://a.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png",
         "attribution": "© OpenRailwayMap (CC-BY-SA)",
         "max_zoom": 19,
+        "overlay": True,
+    },
+    "OpenSeaMap Seamarks": {
+        "url": "https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png",
+        "attribution": "© OpenSeaMap (CC-BY-SA)",
+        "max_zoom": 18,
         "overlay": True,
     },
     "OPNVKarte": {

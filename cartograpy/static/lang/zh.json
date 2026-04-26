@@ -2,7 +2,8 @@
   "title": "CartograPy \u2014 \u6253\u5370\u7cbe\u786e\u6bd4\u4f8b\u5c3a\u5730\u56fe",
 
   "section.search": "\u641c\u7d22\u5730\u70b9",
-  "section.print": "\u6253\u5370",
+  "section.map": "\u5730\u56fe",
+  "section.overlays": "\u53e0\u52a0\u5c42",
   "section.grid": "\u7f51\u683c",
   "section.tools": "\u5de5\u5177",
   "section.waypoints": "\u822a\u70b9",
@@ -64,7 +65,9 @@
   "source.global": "\u2500\u2500 \u5168\u7403 \u2500\u2500",
   "source.esri": "\u2500\u2500 Esri \u2500\u2500",
   "source.cartodb": "\u2500\u2500 CartoDB \u2500\u2500",
+  "source.marine": "\u2500\u2500 \u6d77\u6d0b \u2500\u2500",
   "source.regional": "\u2500\u2500 \u533a\u57df \u2500\u2500",
+  "source.emodnet": "EMODnet \u6c34\u4e0b\u5730\u5f62",
   "source.osmHot": "OSM HOT\uff08\u4eba\u9053\u4e3b\u4e49\uff09",
   "source.opnvkarte": "OPNVKarte\uff08\u516c\u5171\u4ea4\u901a\uff09",
   "source.esriStreets": "Esri \u8857\u9053",
@@ -179,5 +182,15 @@
   "weather.temperature": "\u6e29\u5ea6",
   "weather.windLayer": "\u98ce",
   "weather.pressure": "\u6c14\u538b",
-  "weather.hourDetail": "\u5c0f\u65f6\u8be6\u60c5: {0}:00"
+  "weather.hourDetail": "\u5c0f\u65f6\u8be6\u60c5: {0}:00",
+
+  "overlay.seamarks": "\u6d77\u56fe\u6807\u8bb0 (OpenSeaMap)",
+  "overlay.hiking": "\u5f92\u6b65\u8def\u7ebf (Waymarked)",
+  "overlay.railway": "\u94c1\u8def (OpenRailwayMap)",
+  "overlay.rainviewer": "\u96f7\u8fbe (RainViewer)",
+  "overlay.owmPrec": "\u964d\u6c34 (OWM)",
+  "overlay.owmClouds": "\u4e91\u5c42 (OWM)",
+  "overlay.owmTemp": "\u6e29\u5ea6 (OWM)",
+  "overlay.owmWind": "\u98ce\u901f (OWM)",
+  "overlay.owmPressure": "\u6c14\u538b (OWM)"
 }

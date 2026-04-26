@@ -2,7 +2,8 @@
   "title": "CartograPy — Stampa Mappe in Scala",
 
   "section.search": "Cerca luogo",
-  "section.print": "Stampa",
+  "section.map": "Mappa",
+  "section.overlays": "Overlay",
   "section.grid": "Griglia",
   "section.tools": "Strumenti",
   "section.waypoints": "Waypoints",
@@ -64,7 +65,9 @@
   "source.global": "\u2500\u2500 Globali \u2500\u2500",
   "source.esri": "\u2500\u2500 Esri \u2500\u2500",
   "source.cartodb": "\u2500\u2500 CartoDB \u2500\u2500",
+  "source.marine": "\u2500\u2500 Marine \u2500\u2500",
   "source.regional": "\u2500\u2500 Regionali \u2500\u2500",
+  "source.emodnet": "EMODnet Batimetria",
   "source.osmHot": "OSM HOT (Umanitario)",
   "source.opnvkarte": "OPNVKarte (Trasporti)",
   "source.esriStreets": "Esri Strade",
@@ -179,5 +182,15 @@
   "weather.temperature": "Temperatura",
   "weather.windLayer": "Vento",
   "weather.pressure": "Pressione",
-  "weather.hourDetail": "Dettaglio ora: {0}:00"
+  "weather.hourDetail": "Dettaglio ora: {0}:00",
+
+  "overlay.seamarks": "Segnali nautici (OpenSeaMap)",
+  "overlay.hiking": "Sentieri escursionistici (Waymarked)",
+  "overlay.railway": "Ferrovie (OpenRailwayMap)",
+  "overlay.rainviewer": "Radar pioggia (RainViewer)",
+  "overlay.owmPrec": "Precipitazioni (OWM)",
+  "overlay.owmClouds": "Nuvole (OWM)",
+  "overlay.owmTemp": "Temperatura (OWM)",
+  "overlay.owmWind": "Vento (OWM)",
+  "overlay.owmPressure": "Pressione (OWM)"
 }

@@ -465,7 +465,7 @@ class _Handler(BaseHTTPRequestHandler):
         allowed = {"scale", "paper", "landscape", "source", "dpi",
                    "mapTextScale", "gridType", "gridScale", "fullLabels",
                    "lat", "lon", "zoom", "language", "sheets",
-                   "owmApiKey", "searchHistory"}
+                   "owmApiKey", "searchHistory", "overlays"}
         clean = {k: v for k, v in params.items() if k in allowed}
         _CONFIG_FILE.write_text(json.dumps(clean, ensure_ascii=False, indent=2), "utf-8")
         self._json({"ok": True})

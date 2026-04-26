@@ -47,7 +47,7 @@
 
   <!-- Map / Print settings -->
   <details class="panel-section" open>
-    <summary><i class="fa-solid fa-print"></i> <span data-i18n="section.print">Print</span></summary>
+    <summary><i class="fa-solid fa-map"></i> <span data-i18n="section.map">Map</span></summary>
     <div class="content">
       <div class="field">
         <label data-i18n="label.scale">Scale 1 :</label>
@@ -90,6 +90,9 @@
           <option value="CartoDB Positron" data-i18n="source.cartodbLight">CartoDB Positron (light)</option>
           <option value="CartoDB Voyager">CartoDB Voyager</option>
           <option value="CartoDB Dark">CartoDB Dark</option>
+          </optgroup>
+          <optgroup label="── Marine ──" data-i18n-label="source.marine">
+          <option value="EMODnet Bathymetry" data-i18n="source.emodnet">EMODnet Bathymetry</option>
           </optgroup>
           <optgroup label="── Regional ──" data-i18n-label="source.regional">
           <option value="TopPlusOpen">TopPlusOpen (DE)</option>
@@ -155,6 +158,15 @@
       <div class="field" id="fullLabelsGroup">
         <label style="min-width:unset"><input type="checkbox" id="fullLabels"> <span data-i18n="label.fullLabels">Full labels</span></label>
       </div>
+    </div>
+  </details>
+
+  <!-- Overlays (multi-select) -->
+  <details class="panel-section">
+    <summary><i class="fa-solid fa-layer-group"></i> <span data-i18n="section.overlays">Overlays</span></summary>
+    <div class="content">
+      <div id="overlayList"></div>
+      <div id="overlayMsg" class="overlay-msg"></div>
     </div>
   </details>
 
@@ -359,11 +371,6 @@
       </div>
     </div>
     <div id="weatherLegend"></div>
-    <div id="weatherOverlayRow">
-      <label><input type="checkbox" id="weatherOverlay"> <span data-i18n="weather.overlay">Map overlay</span></label>
-      <select id="weatherLayer"></select>
-    </div>
-    <div id="weatherOverlayMsg"></div>
   </div>
   <div id="status" data-i18n="status.ready">Ready — drag the map, then export the PDF</div>
   <!-- Mobile floating tool bar -->
