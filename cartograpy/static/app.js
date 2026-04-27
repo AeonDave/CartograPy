@@ -1261,6 +1261,7 @@
     }
     map.getContainer().classList.add("ruler-cursor");
     map.on("click", rulerClick);
+    refreshOsmSnapCache(false);
   }
   function deactivateRuler() {
     document.getElementById("rulerInfo").style.display = "none";
@@ -1367,6 +1368,7 @@
     }
     map.getContainer().classList.add("ruler-cursor");
     map.on("click", protractorClick);
+    refreshOsmSnapCache(false);
   }
   function deactivateProtractor() {
     document.getElementById("protractorInfo").style.display = "none";
@@ -1530,6 +1532,7 @@
     map.on("click", lineClick);
     map.on("dblclick", lineFinish);
     map.on("contextmenu", lineFinishRight);
+    refreshOsmSnapCache(false);
   }
   function deactivateLine() {
     if (linePoints.length >= 2) lineFinish();
@@ -1801,6 +1804,7 @@ ${t("msg.angles")}: ${angles.join(", ")}`;
     compassFixed = false;
     map.getContainer().classList.add("ruler-cursor");
     map.on("click", compassClick);
+    refreshOsmSnapCache(false);
   }
   function deactivateCompass() {
     document.getElementById("compassInfo").style.display = "none";
@@ -2582,6 +2586,7 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
   }
 
   // cartograpy/static/src/config.js
+  init_snap();
   init_tools();
   var CONFIG_FIELDS = {
     scale: { el: () => $scale, type: "value" },
@@ -2595,6 +2600,11 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
     gridType: { el: () => $gridType, type: "value" },
     gridScale: { el: () => $gridScale, type: "value" },
     fullLabels: { el: () => $fullLabels, type: "checked" },
+    routeProfile: { el: () => document.getElementById("routeProfile"), type: "value" },
+    snapWp: { el: () => document.getElementById("chkSnapWp"), type: "checked" },
+    snapPeaks: { el: () => document.getElementById("chkSnapPeaks"), type: "checked" },
+    snapTrails: { el: () => document.getElementById("chkSnapTrails"), type: "checked" },
+    toolsInPdf: { el: () => document.getElementById("chkToolsInPdf"), type: "checked" },
     language: { el: () => document.getElementById("language"), type: "value" },
     owmApiKey: { el: () => document.getElementById("owmApiKey"), type: "value" }
   };
@@ -2642,6 +2652,9 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
         state.activeBaseLayerName = src;
       }
       await loadLanguage(document.getElementById("language").value || "en");
+      if (document.getElementById("chkSnapPeaks")?.checked || document.getElementById("chkSnapTrails")?.checked) {
+        refreshOsmSnapCache(false);
+      }
       if (Array.isArray(cfg.searchHistory)) {
         searchHistory.length = 0;
         searchHistory.push(...cfg.searchHistory.slice(0, MAX_HISTORY));
@@ -2659,7 +2672,22 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
     }
   }
   function attachAutoSaveListeners() {
-    [$scale, $paper, $sheets, $source, $dpi, $mapTextScale, $bearing, $gridType, $gridScale].forEach((el) => el.addEventListener("change", scheduleSaveConfig));
+    [
+      $scale,
+      $paper,
+      $sheets,
+      $source,
+      $dpi,
+      $mapTextScale,
+      $bearing,
+      $gridType,
+      $gridScale,
+      document.getElementById("routeProfile"),
+      document.getElementById("chkSnapWp"),
+      document.getElementById("chkSnapPeaks"),
+      document.getElementById("chkSnapTrails"),
+      document.getElementById("chkToolsInPdf")
+    ].filter(Boolean).forEach((el) => el.addEventListener("change", scheduleSaveConfig));
     $sheets.addEventListener("input", scheduleSaveConfig);
     [$landscape, $fullLabels].forEach((el) => el.addEventListener("change", scheduleSaveConfig));
     map.on("moveend", scheduleSaveConfig);

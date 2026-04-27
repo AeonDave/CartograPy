@@ -530,6 +530,7 @@ class _Handler(BaseHTTPRequestHandler):
         # sanitize: only accept known keys
         allowed = {"scale", "paper", "landscape", "source", "dpi",
                    "mapTextScale", "bearing", "gridType", "gridScale", "fullLabels",
+                   "routeProfile", "snapWp", "snapPeaks", "snapTrails", "toolsInPdf",
                    "lat", "lon", "zoom", "language", "sheets",
                    "owmApiKey", "searchHistory", "overlays"}
         clean = {k: v for k, v in params.items() if k in allowed}

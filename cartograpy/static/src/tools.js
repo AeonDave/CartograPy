@@ -9,7 +9,7 @@ import { state, TOOL_COLORS, isTouch,
          routeHistory } from './state.js';
 import { t } from './i18n.js';
 import { renderWaypointMarkers, deactivateWaypoint } from './waypoints.js';
-import { snapPoint } from './snap.js';
+import { snapPoint, refreshOsmSnapCache } from './snap.js';
 import { activateRoute, deactivateRoute, formatRouteSummary,
          setRouteHistoryRenderer } from './route.js';
 
@@ -273,6 +273,7 @@ function activateRuler() {
   }
   map.getContainer().classList.add('ruler-cursor');
   map.on('click', rulerClick);
+  refreshOsmSnapCache(false);
 }
 
 function deactivateRuler() {
@@ -367,6 +368,7 @@ function activateProtractor() {
   }
   map.getContainer().classList.add('ruler-cursor');
   map.on('click', protractorClick);
+  refreshOsmSnapCache(false);
 }
 
 function deactivateProtractor() {
@@ -504,6 +506,7 @@ function activateLine() {
   map.on('click', lineClick);
   map.on('dblclick', lineFinish);
   map.on('contextmenu', lineFinishRight);
+  refreshOsmSnapCache(false);
 }
 
 function deactivateLine() {
@@ -749,6 +752,7 @@ function activateCompass() {
   compassFixed = false;
   map.getContainer().classList.add('ruler-cursor');
   map.on('click', compassClick);
+  refreshOsmSnapCache(false);
 }
 
 function deactivateCompass() {

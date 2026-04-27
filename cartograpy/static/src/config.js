@@ -9,6 +9,7 @@ import { state, waypoints, searchHistory, tileLayers,
 import { t, loadLanguage } from './i18n.js';
 import { populateOverlayPanel, applyOverlays, overlays } from './overlays.js';
 import { renderHistory } from './search.js';
+import { refreshOsmSnapCache } from './snap.js';
 import { collectToolData } from './tools.js';
 
 // ---------------- Config field map ----------------
@@ -24,6 +25,11 @@ const CONFIG_FIELDS = {
   gridType:     { el: () => $gridType,     type: 'value' },
   gridScale:    { el: () => $gridScale,    type: 'value' },
   fullLabels:   { el: () => $fullLabels,   type: 'checked' },
+  routeProfile: { el: () => document.getElementById('routeProfile'), type: 'value' },
+  snapWp:       { el: () => document.getElementById('chkSnapWp'),    type: 'checked' },
+  snapPeaks:    { el: () => document.getElementById('chkSnapPeaks'), type: 'checked' },
+  snapTrails:   { el: () => document.getElementById('chkSnapTrails'), type: 'checked' },
+  toolsInPdf:   { el: () => document.getElementById('chkToolsInPdf'), type: 'checked' },
   language:     { el: () => document.getElementById('language'),  type: 'value' },
   owmApiKey:    { el: () => document.getElementById('owmApiKey'), type: 'value' },
 };
@@ -79,6 +85,11 @@ export async function loadConfig() {
     // Load language.
     await loadLanguage(document.getElementById('language').value || 'en');
 
+    if (document.getElementById('chkSnapPeaks')?.checked
+        || document.getElementById('chkSnapTrails')?.checked) {
+      refreshOsmSnapCache(false);
+    }
+
     // Restore search history (mutate in place: const export).
     if (Array.isArray(cfg.searchHistory)) {
       searchHistory.length = 0;
@@ -102,7 +113,11 @@ export async function loadConfig() {
 
 // ---------------- Auto-save listeners (idempotent) ----------------
 export function attachAutoSaveListeners() {
-  [$scale, $paper, $sheets, $source, $dpi, $mapTextScale, $bearing, $gridType, $gridScale]
+  [$scale, $paper, $sheets, $source, $dpi, $mapTextScale, $bearing, $gridType, $gridScale,
+   document.getElementById('routeProfile'), document.getElementById('chkSnapWp'),
+   document.getElementById('chkSnapPeaks'), document.getElementById('chkSnapTrails'),
+   document.getElementById('chkToolsInPdf')]
+    .filter(Boolean)
     .forEach(el => el.addEventListener('change', scheduleSaveConfig));
   $sheets.addEventListener('input', scheduleSaveConfig);
   [$landscape, $fullLabels].forEach(el => el.addEventListener('change', scheduleSaveConfig));
