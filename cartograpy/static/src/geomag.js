@@ -11,6 +11,14 @@ import { t } from './i18n.js';
 let _timer = null;
 let _badge = null;
 
+function _isEnabled() {
+  return document.getElementById('chkMagBadge')?.checked !== false;
+}
+
+function _hideBadge() {
+  if (_badge) _badge.style.display = 'none';
+}
+
 function _ensureBadge() {
   if (_badge) return _badge;
   const mapEl = document.getElementById('map');
@@ -36,6 +44,10 @@ function _fmt(deg) {
 }
 
 async function _refresh() {
+  if (!_isEnabled()) {
+    _hideBadge();
+    return;
+  }
   const c = map.getCenter();
   const epsg = state.gridEpsg ? `&epsg=${state.gridEpsg}` : '';
   const url = `/api/declination?lat=${c.lat}&lon=${c.lng}${epsg}`;
@@ -62,6 +74,13 @@ export function scheduleMagRefresh() {
 }
 
 export function initMagDisplay() {
+  document.getElementById('chkMagBadge')?.addEventListener('change', () => {
+    if (_isEnabled()) scheduleMagRefresh();
+    else {
+      if (_timer) clearTimeout(_timer);
+      _hideBadge();
+    }
+  });
   map.on('moveend', scheduleMagRefresh);
   map.on('zoomend', scheduleMagRefresh);
   if ($gridType) $gridType.addEventListener('change', scheduleMagRefresh);

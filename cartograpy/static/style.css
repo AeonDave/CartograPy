@@ -71,6 +71,10 @@ body { font-family: system-ui, -apple-system, sans-serif; display: flex; height:
   flex: 1; cursor: pointer; }
 .tool-hist-del { cursor: pointer; margin-left: 6px; color: #94a3b8; padding: 0 3px; }
 .tool-hist-del:hover { color: #dc2626; }
+.tool-hist-elev { cursor: pointer; display: inline-flex; align-items: center; gap: 3px;
+  margin-left: 6px; padding: 1px 5px; border: 1px solid #bae6fd; border-radius: 999px;
+  background: #ecfeff; color: #0891b2; font-size: 11px; line-height: 1.4; white-space: nowrap; }
+.tool-hist-elev:hover { background: #cffafe; border-color: #67e8f9; }
 
 #toggleSidebar { position: absolute; top: 10px; left: 10px; z-index: 1002; width: 36px; height: 36px;
   border: none; border-radius: 6px; background: #fff; box-shadow: 0 1px 5px rgba(0,0,0,.2);
@@ -214,6 +218,25 @@ body:not(.sidebar-hidden) #toggleSidebar { left: 310px; }
 .overlay-row.disabled .ov-label::after { content: " \1F511"; font-size: 10px; }
 .overlay-msg { padding: 4px 0 0; font-size: 10px; color: #f59e0b; min-height: 1em; }
 .overlay-msg:empty { padding: 0; }
+
+/* Live Traffic panel + markers */
+.traffic-panel { display: flex; flex-direction: column; gap: 4px; }
+.traffic-toggle-row { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600;
+  color: #334155; padding: 3px 4px; border-radius: 4px; cursor: pointer; }
+.traffic-toggle-row:hover { background: #f1f5f9; }
+.traffic-provider-row { margin-left: 18px; }
+.traffic-provider-row label { min-width: 58px; }
+.traffic-msg { padding: 4px 0 0; font-size: 10px; color: #64748b; min-height: 1em; }
+.traffic-msg.error { color: #dc2626; }
+.traffic-marker-wrap { background: transparent !important; border: none !important; }
+.traffic-marker { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+  border: 2px solid #fff; border-radius: 50%; box-shadow: 0 1px 5px rgba(0,0,0,.35);
+  color: #fff; font-size: 12px; transform: rotate(var(--traffic-rotation, 0deg)); transform-origin: 50% 50%; }
+.traffic-marker-aircraft { background: #2563eb; }
+.traffic-marker-vessel { background: #0891b2; }
+.traffic-marker-train { background: #7c3aed; }
+.traffic-popup { font-size: 12px; color: #334155; line-height: 1.35; }
+.traffic-popup-title { font-weight: 800; color: #1e293b; margin-bottom: 3px; }
 
 /* Clickable hour bar segments */
 #weatherBar .wh { cursor: pointer; }

@@ -252,7 +252,7 @@ export async function refreshWpFileList() {
       `<div class="wpf-item" data-name="${f}">
          <i class="fa-solid fa-map-location-dot" style="color:#2563eb;"></i>
          <span class="wpf-name">${f}</span>
-         <span class="wpf-del" data-name="${f}" title="Elimina"><i class="fa-solid fa-trash"></i></span>
+         <span class="wpf-del" data-name="${f}" title="${t('msg.delete')}"><i class="fa-solid fa-trash"></i></span>
        </div>`
     ).join('');
     list.querySelectorAll('.wpf-item').forEach(el => {

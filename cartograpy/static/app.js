@@ -413,7 +413,7 @@
         (f) => `<div class="wpf-item" data-name="${f}">
          <i class="fa-solid fa-map-location-dot" style="color:#2563eb;"></i>
          <span class="wpf-name">${f}</span>
-         <span class="wpf-del" data-name="${f}" title="Elimina"><i class="fa-solid fa-trash"></i></span>
+         <span class="wpf-del" data-name="${f}" title="${t("msg.delete")}"><i class="fa-solid fa-trash"></i></span>
        </div>`
       ).join("");
       list.querySelectorAll(".wpf-item").forEach((el) => {
@@ -563,6 +563,9 @@
     });
     document.querySelectorAll("[data-i18n-label]").forEach((el) => {
       el.label = t(el.dataset.i18nLabel);
+    });
+    document.querySelectorAll("[data-i18n-aria-label]").forEach((el) => {
+      el.setAttribute("aria-label", t(el.dataset.i18nAriaLabel));
     });
     renderWaypointList();
   }
@@ -1072,8 +1075,7 @@
       if (toolName === "ruler" || toolName === "line" || toolName === "route") {
         elev = document.createElement("span");
         elev.className = "tool-hist-elev";
-        elev.style.cssText = "cursor:pointer;margin-right:4px;color:#0891b2;font-size:12px;";
-        elev.innerHTML = '<i class="fa-solid fa-mountain"></i>';
+        elev.innerHTML = `<i class="fa-solid fa-mountain"></i><span>${t("elev.button")}</span>`;
         elev.title = t("elev.show");
         elev.addEventListener("click", async (ev) => {
           ev.stopPropagation();
@@ -2597,6 +2599,7 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
     dpi: { el: () => $dpi, type: "value" },
     mapTextScale: { el: () => $mapTextScale, type: "value" },
     bearing: { el: () => $bearing, type: "value" },
+    showMagBadge: { el: () => document.getElementById("chkMagBadge"), type: "checked" },
     gridType: { el: () => $gridType, type: "value" },
     gridScale: { el: () => $gridScale, type: "value" },
     fullLabels: { el: () => $fullLabels, type: "checked" },
@@ -2605,8 +2608,17 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
     snapPeaks: { el: () => document.getElementById("chkSnapPeaks"), type: "checked" },
     snapTrails: { el: () => document.getElementById("chkSnapTrails"), type: "checked" },
     toolsInPdf: { el: () => document.getElementById("chkToolsInPdf"), type: "checked" },
+    trafficAircraftEnabled: { el: () => document.getElementById("chkTrafficAircraft"), type: "checked" },
+    trafficAircraftProvider: { el: () => document.getElementById("trafficAircraftProvider"), type: "value" },
+    trafficVesselEnabled: { el: () => document.getElementById("chkTrafficVessels"), type: "checked" },
+    trafficVesselProvider: { el: () => document.getElementById("trafficVesselProvider"), type: "value" },
+    trafficTrainEnabled: { el: () => document.getElementById("chkTrafficTrains"), type: "checked" },
+    trafficTrainProvider: { el: () => document.getElementById("trafficTrainProvider"), type: "value" },
+    trafficRefreshSec: { el: () => document.getElementById("trafficRefreshSec"), type: "value" },
     language: { el: () => document.getElementById("language"), type: "value" },
-    owmApiKey: { el: () => document.getElementById("owmApiKey"), type: "value" }
+    owmApiKey: { el: () => document.getElementById("owmApiKey"), type: "value" },
+    aishubUsername: { el: () => document.getElementById("aishubUsername"), type: "value" },
+    gtfsRealtimeUrl: { el: () => document.getElementById("gtfsRealtimeUrl"), type: "value" }
   };
   function gatherConfig() {
     const c = map.getCenter();
@@ -2680,14 +2692,25 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
       $dpi,
       $mapTextScale,
       $bearing,
+      document.getElementById("chkMagBadge"),
       $gridType,
       $gridScale,
       document.getElementById("routeProfile"),
       document.getElementById("chkSnapWp"),
       document.getElementById("chkSnapPeaks"),
       document.getElementById("chkSnapTrails"),
-      document.getElementById("chkToolsInPdf")
+      document.getElementById("chkToolsInPdf"),
+      document.getElementById("chkTrafficAircraft"),
+      document.getElementById("trafficAircraftProvider"),
+      document.getElementById("chkTrafficVessels"),
+      document.getElementById("trafficVesselProvider"),
+      document.getElementById("chkTrafficTrains"),
+      document.getElementById("trafficTrainProvider"),
+      document.getElementById("trafficRefreshSec"),
+      document.getElementById("aishubUsername"),
+      document.getElementById("gtfsRealtimeUrl")
     ].filter(Boolean).forEach((el) => el.addEventListener("change", scheduleSaveConfig));
+    [document.getElementById("aishubUsername"), document.getElementById("gtfsRealtimeUrl")].filter(Boolean).forEach((el) => el.addEventListener("input", scheduleSaveConfig));
     $sheets.addEventListener("input", scheduleSaveConfig);
     [$landscape, $fullLabels].forEach((el) => el.addEventListener("change", scheduleSaveConfig));
     map.on("moveend", scheduleSaveConfig);
@@ -3157,6 +3180,12 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
   init_i18n();
   var _timer = null;
   var _badge = null;
+  function _isEnabled() {
+    return document.getElementById("chkMagBadge")?.checked !== false;
+  }
+  function _hideBadge() {
+    if (_badge) _badge.style.display = "none";
+  }
   function _ensureBadge() {
     if (_badge) return _badge;
     const mapEl = document.getElementById("map");
@@ -3173,6 +3202,10 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
     return `${Math.abs(deg).toFixed(1)}\xB0${dir}`;
   }
   async function _refresh() {
+    if (!_isEnabled()) {
+      _hideBadge();
+      return;
+    }
     const c = map.getCenter();
     const epsg = state.gridEpsg ? `&epsg=${state.gridEpsg}` : "";
     const url = `/api/declination?lat=${c.lat}&lon=${c.lng}${epsg}`;
@@ -3194,6 +3227,13 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
     _timer = setTimeout(_refresh, 400);
   }
   function initMagDisplay() {
+    document.getElementById("chkMagBadge")?.addEventListener("change", () => {
+      if (_isEnabled()) scheduleMagRefresh();
+      else {
+        if (_timer) clearTimeout(_timer);
+        _hideBadge();
+      }
+    });
     map.on("moveend", scheduleMagRefresh);
     map.on("zoomend", scheduleMagRefresh);
     if ($gridType) $gridType.addEventListener("change", scheduleMagRefresh);
@@ -3206,6 +3246,7 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
 
   // cartograpy/static/src/compass.js
   init_core();
+  init_i18n();
   function _supportsRotate() {
     return typeof map.setBearing === "function" && typeof map.getBearing === "function";
   }
@@ -3254,9 +3295,10 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
       options: { position: "topright" },
       onAdd() {
         const wrap = L.DomUtil.create("div", "leaflet-bar leaflet-control compass-control");
-        wrap.title = "Drag to rotate the map; click to reset north";
+        wrap.title = t("compass.rotateTitle");
+        wrap.setAttribute("data-i18n-title", "compass.rotateTitle");
         wrap.innerHTML = `
-        <a href="#" class="compass-btn" role="button" aria-label="Rotate map or reset north">
+        <a href="#" class="compass-btn" role="button" aria-label="${t("compass.rotateAria")}">
           <svg viewBox="0 0 36 36" width="28" height="28" class="compass-svg">
             <circle cx="18" cy="18" r="16" fill="#fff" stroke="#475569" stroke-width="1.5"/>
             <text x="18" y="9" text-anchor="middle" font-size="7" font-weight="700"
@@ -3266,6 +3308,9 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
           </svg>
         </a>`;
         this._btn = wrap.querySelector(".compass-btn");
+        if (this._btn) {
+          this._btn.setAttribute("data-i18n-aria-label", "compass.rotateAria");
+        }
         this._svg = wrap.querySelector(".compass-svg");
         this._dragging = false;
         this._moved = false;
@@ -3357,6 +3402,211 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
       ctl._update();
       _syncBearingInput();
     });
+  }
+
+  // cartograpy/static/src/traffic.js
+  init_core();
+  init_i18n();
+  var $msg = document.getElementById("trafficMsg");
+  var $refresh = document.getElementById("trafficRefreshSec");
+  var TRAFFIC_CATEGORIES = [
+    {
+      kind: "aircraft",
+      enabled: () => document.getElementById("chkTrafficAircraft"),
+      provider: () => document.getElementById("trafficAircraftProvider"),
+      icon: "fa-plane"
+    },
+    {
+      kind: "vessel",
+      enabled: () => document.getElementById("chkTrafficVessels"),
+      provider: () => document.getElementById("trafficVesselProvider"),
+      icon: "fa-ship"
+    },
+    {
+      kind: "train",
+      enabled: () => document.getElementById("chkTrafficTrains"),
+      provider: () => document.getElementById("trafficTrainProvider"),
+      icon: "fa-train"
+    }
+  ];
+  var _layer = null;
+  var _timer2 = null;
+  var _moveTimer2 = null;
+  var _running = false;
+  var _queued = false;
+  var _initialized = false;
+  function _setMsg(msg, kind = "") {
+    if (!$msg) return;
+    $msg.textContent = msg || "";
+    $msg.classList.toggle("error", kind === "error");
+    $msg.style.display = msg ? "" : "none";
+  }
+  function _refreshIntervalMs() {
+    const sec = parseInt($refresh?.value || "30", 10);
+    return Math.max(10, Math.min(300, Number.isFinite(sec) ? sec : 30)) * 1e3;
+  }
+  function _enabledCategories() {
+    return TRAFFIC_CATEGORIES.filter((cat) => cat.enabled()?.checked && cat.provider()?.value);
+  }
+  function _boundsQuery(provider) {
+    const b = map.getBounds();
+    const params = new URLSearchParams({
+      provider,
+      s: b.getSouth().toFixed(6),
+      w: b.getWest().toFixed(6),
+      n: b.getNorth().toFixed(6),
+      e: b.getEast().toFixed(6)
+    });
+    return `/api/live_traffic?${params.toString()}`;
+  }
+  function _restartTimer() {
+    if (_timer2) clearInterval(_timer2);
+    _timer2 = null;
+    if (!_enabledCategories().length) return;
+    _timer2 = setInterval(refreshTraffic, _refreshIntervalMs());
+  }
+  function _scheduleRefresh() {
+    if (_moveTimer2) clearTimeout(_moveTimer2);
+    _moveTimer2 = setTimeout(() => refreshTraffic(), 700);
+  }
+  async function _fetchCategory(cat) {
+    const provider = cat.provider().value;
+    const res = await fetch(_boundsQuery(provider));
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+    return data.features || [];
+  }
+  function _clearLayer() {
+    if (_layer) _layer.clearLayers();
+  }
+  function _render(features) {
+    _clearLayer();
+    for (const feature of features) {
+      const lat = Number(feature.lat);
+      const lon = Number(feature.lon);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      const marker = L.marker([lat, lon], { icon: _makeIcon(feature) });
+      marker.bindPopup(_popupHtml(feature));
+      marker.addTo(_layer);
+    }
+  }
+  function _makeIcon(feature) {
+    const kind = feature.kind || "traffic";
+    const cat = TRAFFIC_CATEGORIES.find((c) => c.kind === kind);
+    const heading = Number(feature.heading);
+    const rotation = Number.isFinite(heading) ? heading : 0;
+    const icon = cat?.icon || "fa-location-dot";
+    const html = `<div class="traffic-marker traffic-marker-${_escAttr(kind)}" style="--traffic-rotation:${rotation}deg"><i class="fa-solid ${icon}"></i></div>`;
+    return L.divIcon({
+      className: "traffic-marker-wrap",
+      html,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+      popupAnchor: [0, -12]
+    });
+  }
+  function _popupHtml(feature) {
+    const label = _esc(feature.label || feature.id || "Traffic");
+    const provider = _esc(_providerLabel(feature.provider));
+    const speed = feature.speed != null ? `${_esc(feature.speed)} ${_esc(feature.speed_unit || "")}` : "\u2014";
+    const altitude = feature.altitude != null ? `${_esc(feature.altitude)} ${_esc(feature.altitude_unit || "")}` : "";
+    const when = feature.timestamp ? new Date(feature.timestamp * 1e3).toLocaleString() : "\u2014";
+    const details = feature.details || {};
+    const extra = _detailsRows(details);
+    return `<div class="traffic-popup"><div class="traffic-popup-title">${label}</div><div><b>${t("traffic.provider")}:</b> ${provider}</div><div><b>${t("traffic.speed")}:</b> ${speed}</div>` + (altitude ? `<div><b>${t("traffic.altitude")}:</b> ${altitude}</div>` : "") + `<div><b>${t("traffic.updated")}:</b> ${_esc(when)}</div>` + extra + `</div>`;
+  }
+  function _detailsRows(details) {
+    const rows = [];
+    for (const [key, value] of Object.entries(details)) {
+      if (value === null || value === void 0 || value === "") continue;
+      rows.push(`<div><b>${_esc(_labelize(key))}:</b> ${_esc(value)}</div>`);
+      if (rows.length >= 5) break;
+    }
+    return rows.join("");
+  }
+  function _providerLabel(provider) {
+    const keys = {
+      aircraft_opensky: "traffic.provider.opensky",
+      vessel_aishub: "traffic.provider.aishub",
+      train_gtfsrt: "traffic.provider.gtfsrt"
+    };
+    return t(keys[provider] || provider || "traffic.provider");
+  }
+  function _labelize(key) {
+    return String(key).replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+  function _esc(value) {
+    return String(value).replace(/[&<>"]/g, (ch) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;"
+    })[ch]);
+  }
+  function _escAttr(value) {
+    return String(value).replace(/[^a-z0-9_-]/gi, "");
+  }
+  async function refreshTraffic() {
+    if (!_layer) return;
+    if (_running) {
+      _queued = true;
+      return;
+    }
+    const enabled = _enabledCategories();
+    if (!enabled.length) {
+      _clearLayer();
+      _setMsg("");
+      _restartTimer();
+      return;
+    }
+    _running = true;
+    _setMsg(t("traffic.loading"));
+    try {
+      const results = await Promise.allSettled(enabled.map(_fetchCategory));
+      const features = [];
+      const errors = [];
+      results.forEach((result) => {
+        if (result.status === "fulfilled") features.push(...result.value);
+        else errors.push(result.reason?.message || String(result.reason));
+      });
+      _render(features);
+      if (errors.length) _setMsg(t("traffic.error", errors.join(" | ")), "error");
+      else if (features.length) _setMsg(t("traffic.count", features.length));
+      else _setMsg(t("traffic.none"));
+    } catch (e) {
+      _clearLayer();
+      _setMsg(t("traffic.error", e.message), "error");
+    } finally {
+      _running = false;
+      if (_queued) {
+        _queued = false;
+        _scheduleRefresh();
+      }
+    }
+  }
+  function initTraffic() {
+    if (_initialized) return;
+    _initialized = true;
+    _layer = L.layerGroup().addTo(map);
+    const controls = [
+      document.getElementById("chkTrafficAircraft"),
+      document.getElementById("trafficAircraftProvider"),
+      document.getElementById("chkTrafficVessels"),
+      document.getElementById("trafficVesselProvider"),
+      document.getElementById("chkTrafficTrains"),
+      document.getElementById("trafficTrainProvider"),
+      document.getElementById("trafficRefreshSec")
+    ].filter(Boolean);
+    controls.forEach((el) => el.addEventListener("change", () => {
+      scheduleSaveConfig();
+      refreshTraffic();
+      _restartTimer();
+    }));
+    map.on("moveend zoomend", () => {
+      if (_enabledCategories().length) _scheduleRefresh();
+    });
+    refreshTraffic();
+    _restartTimer();
   }
 
   // cartograpy/static/src/main.js
@@ -3630,6 +3880,7 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
   initSnap();
   initCompassControl();
   loadSources().then(() => loadLanguage("en")).then(() => populateOverlayPanel()).then(() => loadConfig()).then(() => {
+    initTraffic();
     initMagDisplay();
     setTimeout(updateOverlays, 500);
   });

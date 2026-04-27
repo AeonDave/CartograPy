@@ -32,6 +32,7 @@ from .osm_features import query_features as osm_query_features
 from .routing import PROFILE_KEYS, route as routing_route
 from .runtime import get_data_dir
 from .tiles import TileCache, TILE_SOURCES
+from .traffic import BoundingBox, TrafficConfigError, TrafficError, query_live_traffic
 from .utils import PAPER_SIZES, SCALES, auto_grid_spacing, compute_sheet_layout
 
 _HERE = Path(__file__).resolve().parent
@@ -166,6 +167,8 @@ class _Handler(BaseHTTPRequestHandler):
             self._handle_tools_load(qs)
         elif path == "/api/weather":
             self._handle_weather(qs)
+        elif path == "/api/live_traffic":
+            self._handle_live_traffic(qs)
         elif path == "/api/declination":
             self._handle_declination(qs)
         elif path == "/api/osm_snap":
@@ -518,6 +521,34 @@ class _Handler(BaseHTTPRequestHandler):
         except Exception as exc:
             self._json({"error": str(exc)}, 502)
 
+    def _handle_live_traffic(self, qs):
+        """Return normalized live traffic markers for the visible map bbox."""
+        provider = qs.get("provider", [""])[0].strip()
+        try:
+            bbox = BoundingBox(
+                south=float(qs["s"][0]),
+                west=float(qs["w"][0]),
+                north=float(qs["n"][0]),
+                east=float(qs["e"][0]),
+            )
+        except (KeyError, ValueError, IndexError):
+            self._json({"error": "missing bbox (s,w,n,e)"}, 400)
+            return
+        config: dict = {}
+        if _CONFIG_FILE.is_file():
+            try:
+                config = json.loads(_CONFIG_FILE.read_text("utf-8"))
+            except Exception:
+                config = {}
+        try:
+            self._json(query_live_traffic(provider, bbox, config))
+        except TrafficConfigError as exc:
+            self._json({"error": str(exc), "config": True}, 400)
+        except TrafficError as exc:
+            msg = str(exc)
+            code = 502 if "upstream" in msg or "invalid GTFS" in msg else 400
+            self._json({"error": msg}, code)
+
     # -- Config persistence -----------------------------------------------
 
     def _handle_config_get(self):
@@ -529,8 +560,13 @@ class _Handler(BaseHTTPRequestHandler):
     def _handle_config_save(self, params):
         # sanitize: only accept known keys
         allowed = {"scale", "paper", "landscape", "source", "dpi",
-                   "mapTextScale", "bearing", "gridType", "gridScale", "fullLabels",
+                   "mapTextScale", "bearing", "showMagBadge",
+                   "gridType", "gridScale", "fullLabels",
                    "routeProfile", "snapWp", "snapPeaks", "snapTrails", "toolsInPdf",
+                   "trafficAircraftEnabled", "trafficAircraftProvider",
+                   "trafficVesselEnabled", "trafficVesselProvider",
+                   "trafficTrainEnabled", "trafficTrainProvider",
+                   "trafficRefreshSec", "aishubUsername", "gtfsRealtimeUrl",
                    "lat", "lon", "zoom", "language", "sheets",
                    "owmApiKey", "searchHistory", "overlays"}
         clean = {k: v for k, v in params.items() if k in allowed}

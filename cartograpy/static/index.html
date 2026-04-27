@@ -14,7 +14,7 @@
 
 <!-- ============ SIDEBAR ============ -->
 <div id="sidebar">
-  <h2><i class="fa-solid fa-map"></i> CartograPy <button id="closeSidebar" class="close-sidebar-btn"><i class="fa-solid fa-xmark"></i></button></h2>
+  <h2><i class="fa-solid fa-map"></i> CartograPy <button id="closeSidebar" class="close-sidebar-btn" title="Close" data-i18n-title="btn.close"><i class="fa-solid fa-xmark"></i></button></h2>
 
   <!-- Language -->
   <div style="padding: 4px 12px; border-bottom: 1px solid #e5e7eb;">
@@ -34,7 +34,7 @@
     <div class="content">
       <div class="field">
         <input type="text" id="search" placeholder="e.g. Cortina d'Ampezzo" data-i18n-placeholder="placeholder.search" style="flex:1" autocomplete="off">
-        <button class="btn btn-primary btn-sm" id="btnSearch"><i class="fa-solid fa-search"></i></button>
+        <button class="btn btn-primary btn-sm" id="btnSearch" title="Search" data-i18n-title="btn.search"><i class="fa-solid fa-search"></i></button>
       </div>
       <div id="searchSuggestions"></div>
       <div id="results"><select id="resultsList"></select></div>
@@ -92,6 +92,9 @@
         <label data-i18n="label.bearing">Bearing °:</label>
         <input type="number" id="bearing" value="0" min="0" max="359" step="1">
       </div>
+      <div class="field">
+        <label style="min-width:unset"><input type="checkbox" id="chkMagBadge" checked> <span data-i18n="label.showMagBadge">Show declination badge</span></label>
+      </div>
     </div>
   </details>
 
@@ -142,6 +145,51 @@
     </div>
   </details>
 
+  <!-- Live Traffic -->
+  <details class="panel-section">
+    <summary><i class="fa-solid fa-tower-broadcast"></i> <span data-i18n="section.liveTraffic">Live Traffic</span></summary>
+    <div class="content traffic-panel">
+      <label class="traffic-toggle-row">
+        <input type="checkbox" id="chkTrafficAircraft">
+        <span><i class="fa-solid fa-plane"></i> <span data-i18n="traffic.aircraft">Aircraft</span></span>
+      </label>
+      <div class="field traffic-provider-row">
+        <label data-i18n="traffic.provider">Provider:</label>
+        <select id="trafficAircraftProvider">
+          <option value="aircraft_opensky" data-i18n="traffic.provider.opensky">Aircraft — OpenSky</option>
+        </select>
+      </div>
+
+      <label class="traffic-toggle-row">
+        <input type="checkbox" id="chkTrafficVessels">
+        <span><i class="fa-solid fa-ship"></i> <span data-i18n="traffic.vessels">Vessels</span></span>
+      </label>
+      <div class="field traffic-provider-row">
+        <label data-i18n="traffic.provider">Provider:</label>
+        <select id="trafficVesselProvider">
+          <option value="vessel_aishub" data-i18n="traffic.provider.aishub">Vessels — AISHub</option>
+        </select>
+      </div>
+
+      <label class="traffic-toggle-row">
+        <input type="checkbox" id="chkTrafficTrains">
+        <span><i class="fa-solid fa-train"></i> <span data-i18n="traffic.trains">Trains</span></span>
+      </label>
+      <div class="field traffic-provider-row">
+        <label data-i18n="traffic.provider">Provider:</label>
+        <select id="trafficTrainProvider">
+          <option value="train_gtfsrt" data-i18n="traffic.provider.gtfsrt">Trains — GTFS-Realtime</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label data-i18n="traffic.refresh">Refresh:</label>
+        <input type="number" id="trafficRefreshSec" value="30" min="10" max="300" step="5">
+      </div>
+      <div id="trafficMsg" class="traffic-msg"></div>
+    </div>
+  </details>
+
   <!-- API keys -->
   <details class="panel-section">
     <summary><i class="fa-solid fa-key"></i> <span data-i18n="section.apiKeys">API keys</span></summary>
@@ -162,7 +210,7 @@
           <div id="owmKeyInput">
             <div class="field" style="gap:4px;">
               <input type="text" id="owmKeyField" placeholder="your-api-key" style="flex:1; font-size:11px;" autocomplete="off">
-              <button id="owmKeyConfirm" class="btn-owm-confirm" title="Confirm"><i class="fa-solid fa-check"></i></button>
+              <button id="owmKeyConfirm" class="btn-owm-confirm" title="Confirm" data-i18n-title="btn.confirm"><i class="fa-solid fa-check"></i></button>
             </div>
             <div id="owmKeyError" class="owm-key-error"></div>
           </div>
@@ -171,8 +219,33 @@
             <div class="owm-badge-row">
               <i class="fa-solid fa-key" style="color:#22c55e;"></i>
               <span class="owm-badge-text"><span data-i18n="label.owmConfigured">API key configured</span></span>
-              <button id="owmKeyDelete" class="btn-owm-delete" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
+              <button id="owmKeyDelete" class="btn-owm-delete" title="Delete" data-i18n-title="msg.delete"><i class="fa-solid fa-trash-can"></i></button>
             </div>
+          </div>
+        </div>
+
+        <!-- Live traffic providers -->
+        <div class="api-key-row">
+          <div class="api-key-head">
+            <i class="fa-solid fa-ship" style="color:#0891b2;"></i>
+            <a href="https://www.aishub.net/api" target="_blank" rel="noopener"
+               class="api-key-name">AISHub</a>
+            <span class="api-key-hint" data-i18n="traffic.aishubHint">username for AIS vessel overlay</span>
+          </div>
+          <div class="field" style="gap:4px;">
+            <input type="text" id="aishubUsername" placeholder="AISHub username" data-i18n-placeholder="traffic.aishubPlaceholder" style="flex:1; font-size:11px;" autocomplete="off">
+          </div>
+        </div>
+
+        <div class="api-key-row">
+          <div class="api-key-head">
+            <i class="fa-solid fa-train" style="color:#7c3aed;"></i>
+            <a href="https://gtfs.org/documentation/realtime/reference/" target="_blank" rel="noopener"
+               class="api-key-name">GTFS-Realtime</a>
+            <span class="api-key-hint" data-i18n="traffic.gtfsHint">VehiclePosition feed URL for train overlay</span>
+          </div>
+          <div class="field" style="gap:4px;">
+            <input type="text" id="gtfsRealtimeUrl" placeholder="https://.../vehicle_positions.pb" data-i18n-placeholder="traffic.gtfsPlaceholder" style="flex:1; font-size:11px;" autocomplete="off">
           </div>
         </div>
 
@@ -260,7 +333,7 @@
           <button class="btn btn-sm btn-secondary" id="btnToolLoad" style="flex:1;">
             <i class="fa-solid fa-folder-open"></i> <span data-i18n="btn.load">Load</span>
           </button>
-          <button class="btn btn-sm btn-danger" id="btnToolClearAll" style="flex:0 0 auto;">
+          <button class="btn btn-sm btn-danger" id="btnToolClearAll" style="flex:0 0 auto;" title="Clear all" data-i18n-title="btn.clearAll">
             <i class="fa-solid fa-trash"></i>
           </button>
         </div>
@@ -269,7 +342,7 @@
             <div style="font-size:11px; font-weight:600; color:#475569; margin-bottom:3px;" data-i18n="tool.fileName">File name:</div>
             <div class="field">
               <input type="text" id="toolFileName" placeholder="e.g. Lake Trip" data-i18n-placeholder="placeholder.wpName" style="flex:1; font-size:11px;">
-              <button class="btn btn-sm btn-success" id="btnToolSaveConfirm"><i class="fa-solid fa-check"></i></button>
+              <button class="btn btn-sm btn-success" id="btnToolSaveConfirm" title="Confirm" data-i18n-title="btn.confirm"><i class="fa-solid fa-check"></i></button>
             </div>
           </div>
           <div id="toolLoadPanel" style="display:none;">
@@ -326,7 +399,7 @@
           <div style="font-size:11px; font-weight:600; color:#475569; margin-bottom:3px;" data-i18n="wp.fileName">File name:</div>
           <div class="field">
             <input type="text" id="wpFileName" placeholder="e.g. Lake Trip" data-i18n-placeholder="placeholder.wpName" style="flex:1; font-size:11px;">
-            <button class="btn btn-sm btn-success" id="btnWpSaveConfirm"><i class="fa-solid fa-check"></i></button>
+            <button class="btn btn-sm btn-success" id="btnWpSaveConfirm" title="Confirm" data-i18n-title="btn.confirm"><i class="fa-solid fa-check"></i></button>
           </div>
         </div>
         <div id="wpLoadPanel" style="display:none;">
@@ -346,7 +419,7 @@
 </div>
 
 <!-- ============ TOGGLE BUTTON ============ -->
-<button id="toggleSidebar"><i class="fa-solid fa-bars"></i></button>
+<button id="toggleSidebar" title="Menu" data-i18n-title="btn.menu"><i class="fa-solid fa-bars"></i></button>
 
 <!-- ============ MAIN MAP ============ -->
 <div id="main">
@@ -356,11 +429,11 @@
     <div id="weatherHeader">
       <i class="fa-solid fa-cloud-sun"></i>
       <span data-i18n="weather.title">Weather</span>
-      <button id="weatherClose" title="Close"><i class="fa-solid fa-xmark"></i></button>
+      <button id="weatherClose" title="Close" data-i18n-title="btn.close"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div id="weatherDateRow">
       <input type="date" id="weatherDate">
-      <button id="weatherNow" title="Now"><i class="fa-solid fa-clock-rotate-left"></i></button>
+      <button id="weatherNow" title="Now" data-i18n-title="weather.now"><i class="fa-solid fa-clock-rotate-left"></i></button>
     </div>
     <div id="weatherBody">
       <div id="weatherIcon"></div>

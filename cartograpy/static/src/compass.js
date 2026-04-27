@@ -9,6 +9,7 @@
 //
 // Rotation is enabled in ``core.js`` via ``rotate: true``.
 import { map, $bearing } from './core.js';
+import { t } from './i18n.js';
 
 function _supportsRotate() {
   return typeof map.setBearing === 'function'
@@ -68,9 +69,10 @@ export function initCompassControl() {
     options: { position: 'topright' },
     onAdd() {
       const wrap = L.DomUtil.create('div', 'leaflet-bar leaflet-control compass-control');
-      wrap.title = 'Drag to rotate the map; click to reset north';
+      wrap.title = t('compass.rotateTitle');
+      wrap.setAttribute('data-i18n-title', 'compass.rotateTitle');
       wrap.innerHTML = `
-        <a href="#" class="compass-btn" role="button" aria-label="Rotate map or reset north">
+        <a href="#" class="compass-btn" role="button" aria-label="${t('compass.rotateAria')}">
           <svg viewBox="0 0 36 36" width="28" height="28" class="compass-svg">
             <circle cx="18" cy="18" r="16" fill="#fff" stroke="#475569" stroke-width="1.5"/>
             <text x="18" y="9" text-anchor="middle" font-size="7" font-weight="700"
@@ -81,6 +83,9 @@ export function initCompassControl() {
         </a>`;
 
       this._btn = wrap.querySelector('.compass-btn');
+      if (this._btn) {
+        this._btn.setAttribute('data-i18n-aria-label', 'compass.rotateAria');
+      }
       this._svg = wrap.querySelector('.compass-svg');
       this._dragging = false;
       this._moved = false;

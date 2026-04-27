@@ -25,12 +25,14 @@ as PDF — with reference grid, waypoints, and measurement tools — printable a
   diagram, one PDF page per sheet
 - **Waypoints** — click, type coordinates (UTM, MGRS, Lat/Lon DD/DM/DMS), bulk
   import; named sets stored as JSON
-- **Measurement tools** — ruler, protractor, polyline, compass; live readings
-  and rendered on the PDF
+- **Measurement and routing tools** — ruler, protractor, polyline, compass, and
+  BRouter routes; snap to waypoints, OSM peaks, or trails; rendered on the PDF
 - **Smart search** — Photon autocomplete while typing, full Nominatim geocoding
   on Enter, last 10 searches persisted
 - **Weather widget** — Open-Meteo hourly forecast; optional RainViewer radar
   and OpenWeatherMap overlays (free key)
+- **Live traffic overlays** — aircraft via OpenSky, vessels via AISHub, and
+  trains via GTFS-Realtime VehiclePosition feeds
 - **Tile cache** — disk cache shared by web UI, tkinter GUI, and PDF exporter;
   XYZ and OGC WMS handled identically
 - **Multi-language UI** — English, Italian, Chinese; add a language by dropping
@@ -42,7 +44,8 @@ as PDF — with reference grid, waypoints, and measurement tools — printable a
 ## Requirements
 
 - Python ≥ 3.10 (with `tkinter`, normally bundled)
-- Internet on first use; tiles are cached in `~/.cartograpy/tiles/`
+- Internet for first tile downloads and online services such as search, routing,
+  weather, and live traffic; tiles are cached in `~/.cartograpy/tiles/`
 
 ## Quick start
 
@@ -76,7 +79,7 @@ CartograPyApp().mainloop()
 4. The red dashed rectangle shows the print area; multi-sheet mode adds inner
    page boundaries
 5. Pick a **grid system** — labels and lines update live
-6. Add **waypoints** and use the **ruler / protractor / polyline / compass**
+6. Add **waypoints** and use **ruler, protractor, polyline, compass, and route** tools
 7. Click **Export PDF** and **print at 100 %** (no "fit to page")
 
 > [!IMPORTANT]
@@ -106,12 +109,49 @@ WMS sources are proxied locally via `/api/tile/<source>/{z}/{x}/{y}.png` so they
 share the same disk cache as XYZ tiles. Full list in
 [cartograpy/tiles.py](cartograpy/tiles.py) (`TILE_SOURCES`).
 
+## Live traffic overlays
+
+Open the **Live Traffic** panel to show moving objects for the current map view.
+Categories can be enabled together; provider choices are exclusive inside each
+category.
+
+| Category | Provider | Configuration |
+|---|---|---|
+| Aircraft | OpenSky | None for anonymous bounding-box queries |
+| Vessels | AISHub | AISHub username in the **API keys** panel |
+| Trains | GTFS-Realtime | `VehiclePosition` feed URL in the **API keys** panel |
+
+The frontend renders normalized markers only. Provider requests go through the
+local `/api/live_traffic` endpoint, which applies bounding-box validation and a
+short TTL cache. Coverage, latency, and rate limits depend on each provider.
+
 ## Grid systems
 
-UTM · MGRS · Lat/Lon (auto DD / DM / DMS) · Gauss-Boaga (IT) · Swiss CH1903+ /
-LV95 · British National Grid · Dutch RD New · German Gauss-Krüger · Irish Grid
-+ ITM · Hungarian EOV · Finnish KKJ · NZTM · Swedish SWEREF 99 TM + RT90 ·
-South African Lo29 · Taiwan TWD97 / TM2 · Qatar National Grid
+CartograPy exposes these grid options in the web UI and API. Projected grids use
+metre-based easting/northing labels; `full labels` switches from abbreviated
+edge labels to complete coordinate values.
+
+| UI option | Grid key | CRS / EPSG | Notes |
+|---|---|---|---|
+| No grid | `none` | — | Disables grid rendering. |
+| UTM | `utm` | Auto EPSG 326xx / 327xx | Zone is selected from longitude; northern/southern hemisphere from latitude. |
+| Lat/Lon | `latlon` | WGS-84 / EPSG 4326 | Grid labels are decimal degrees; coordinate entry accepts DD, DM, and DMS. |
+| MGRS | `mgrs` | UTM-based, auto zone | Grid rendering uses UTM/MGRS-style labels; coordinate parsing requires optional `mgrs`. |
+| Gauss-Boaga (Italy) | `gauss_boaga` | EPSG 3003 / 3004 | West/east zone selected from longitude. |
+| Swiss CH1903+ / LV95 | `swiss` | EPSG 2056 | Swiss projected grid. |
+| British National Grid | `bng` | EPSG 27700 | OSGB36 / British National Grid. |
+| Dutch RD New | `dutch` | EPSG 28992 | Netherlands Rijksdriehoekscoördinaten. |
+| German Gauss-Krüger | `gauss_krueger` | EPSG 31466–31469 | Zone 2–5 selected from longitude. |
+| Irish Grid | `irish_ig` | EPSG 29902 | Legacy Irish Grid. |
+| Irish Transverse Mercator | `irish_itm` | EPSG 2157 | Modern Irish TM grid. |
+| Hungarian EOV | `eov` | EPSG 23700 | Hungarian national grid. |
+| Finnish KKJ | `kkj` | EPSG 2393 | KKJ zone 3. |
+| New Zealand TM | `nztm` | EPSG 2193 | NZGD2000 / New Zealand Transverse Mercator. |
+| Swedish SWEREF 99 TM | `sweref99` | EPSG 3006 | Swedish national grid. |
+| Swedish RT90 | `rt90` | EPSG 3021 | RT90 2.5 gon V. |
+| South African Lo29 | `south_african` | EPSG 2054 | Hartebeesthoek94 / Lo29. |
+| Taiwan TWD97 / TM2 | `taiwan` | EPSG 3826 | Taiwan TM2 zone 121. |
+| Qatar National Grid | `qng` | EPSG 28600 | Qatar National Grid. |
 
 ## Configuration
 
@@ -120,7 +160,7 @@ CartograPy uses two separate JSON files:
 | File | Purpose |
 |---|---|
 | `cartograpy-server.json` | Bootstrap: HTTP port, browser auto-open. Created beside `run.py` (or `CartograPy.exe`) on first launch. |
-| `data/config.json` | Last-used UI state (scale, paper, source, position, language, search history…). Updated automatically. |
+| `data/config.json` | Last-used UI state (scale, paper, source, position, language, search history, OpenWeatherMap key, AISHub username, GTFS-Realtime URL…). Updated automatically. |
 
 Saved waypoints and tool drawings live in `data/waypoints/*.json` and
 `data/tools/*.json`.
@@ -188,6 +228,12 @@ cartograpy/
   tiles.py         TileCache + TILE_SOURCES (XYZ and WMS)
   grid.py          19 grid systems via pyproj
   geocoder.py      Nominatim + Photon clients
+  routing.py       BRouter client for route tools
+  traffic.py       Live traffic provider adapters
+  elevation.py     Open-Elevation client for elevation profiles
+  geomag.py        Magnetic declination helpers
+  gpx.py           GPX import/export helpers
+  osm_features.py  OSM feature lookup for snapping
   export.py        PDF generator (true-scale)
   utils.py         Shared math and constants
   static/
@@ -197,8 +243,6 @@ cartograpy/
     lang/          Translation JSON files
     src/           ES modules — edit these, then `npm run build`
 ```
-
-For an in-depth contributor guide see [AGENTS.md](AGENTS.md).
 
 ## License
 

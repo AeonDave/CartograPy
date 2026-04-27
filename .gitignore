@@ -38,5 +38,6 @@ cartograpy/static/app.js.map
 Thumbs.db
 
 # User data (auto-generated at runtime)
+cartograpy-server.json
 data/*
 AGENTS.md

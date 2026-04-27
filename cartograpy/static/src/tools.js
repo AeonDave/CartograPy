@@ -94,8 +94,7 @@ export function renderToolHistory(toolName, histArr, color) {
     if (toolName === 'ruler' || toolName === 'line' || toolName === 'route') {
       elev = document.createElement('span');
       elev.className = 'tool-hist-elev';
-      elev.style.cssText = 'cursor:pointer;margin-right:4px;color:#0891b2;font-size:12px;';
-      elev.innerHTML = '<i class="fa-solid fa-mountain"></i>';
+      elev.innerHTML = `<i class="fa-solid fa-mountain"></i><span>${t('elev.button')}</span>`;
       elev.title = t('elev.show');
       elev.addEventListener('click', async (ev) => {
         ev.stopPropagation();

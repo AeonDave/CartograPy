@@ -22,6 +22,7 @@ const CONFIG_FIELDS = {
   dpi:          { el: () => $dpi,          type: 'value' },
   mapTextScale: { el: () => $mapTextScale, type: 'value' },
   bearing:      { el: () => $bearing,      type: 'value' },
+  showMagBadge: { el: () => document.getElementById('chkMagBadge'), type: 'checked' },
   gridType:     { el: () => $gridType,     type: 'value' },
   gridScale:    { el: () => $gridScale,    type: 'value' },
   fullLabels:   { el: () => $fullLabels,   type: 'checked' },
@@ -30,8 +31,17 @@ const CONFIG_FIELDS = {
   snapPeaks:    { el: () => document.getElementById('chkSnapPeaks'), type: 'checked' },
   snapTrails:   { el: () => document.getElementById('chkSnapTrails'), type: 'checked' },
   toolsInPdf:   { el: () => document.getElementById('chkToolsInPdf'), type: 'checked' },
+  trafficAircraftEnabled: { el: () => document.getElementById('chkTrafficAircraft'), type: 'checked' },
+  trafficAircraftProvider: { el: () => document.getElementById('trafficAircraftProvider'), type: 'value' },
+  trafficVesselEnabled: { el: () => document.getElementById('chkTrafficVessels'), type: 'checked' },
+  trafficVesselProvider: { el: () => document.getElementById('trafficVesselProvider'), type: 'value' },
+  trafficTrainEnabled: { el: () => document.getElementById('chkTrafficTrains'), type: 'checked' },
+  trafficTrainProvider: { el: () => document.getElementById('trafficTrainProvider'), type: 'value' },
+  trafficRefreshSec: { el: () => document.getElementById('trafficRefreshSec'), type: 'value' },
   language:     { el: () => document.getElementById('language'),  type: 'value' },
   owmApiKey:    { el: () => document.getElementById('owmApiKey'), type: 'value' },
+  aishubUsername: { el: () => document.getElementById('aishubUsername'), type: 'value' },
+  gtfsRealtimeUrl: { el: () => document.getElementById('gtfsRealtimeUrl'), type: 'value' },
 };
 
 function gatherConfig() {
@@ -113,12 +123,20 @@ export async function loadConfig() {
 
 // ---------------- Auto-save listeners (idempotent) ----------------
 export function attachAutoSaveListeners() {
-  [$scale, $paper, $sheets, $source, $dpi, $mapTextScale, $bearing, $gridType, $gridScale,
+  [$scale, $paper, $sheets, $source, $dpi, $mapTextScale, $bearing,
+   document.getElementById('chkMagBadge'), $gridType, $gridScale,
    document.getElementById('routeProfile'), document.getElementById('chkSnapWp'),
    document.getElementById('chkSnapPeaks'), document.getElementById('chkSnapTrails'),
-   document.getElementById('chkToolsInPdf')]
+   document.getElementById('chkToolsInPdf'), document.getElementById('chkTrafficAircraft'),
+   document.getElementById('trafficAircraftProvider'), document.getElementById('chkTrafficVessels'),
+   document.getElementById('trafficVesselProvider'), document.getElementById('chkTrafficTrains'),
+   document.getElementById('trafficTrainProvider'), document.getElementById('trafficRefreshSec'),
+   document.getElementById('aishubUsername'), document.getElementById('gtfsRealtimeUrl')]
     .filter(Boolean)
     .forEach(el => el.addEventListener('change', scheduleSaveConfig));
+  [document.getElementById('aishubUsername'), document.getElementById('gtfsRealtimeUrl')]
+    .filter(Boolean)
+    .forEach(el => el.addEventListener('input', scheduleSaveConfig));
   $sheets.addEventListener('input', scheduleSaveConfig);
   [$landscape, $fullLabels].forEach(el => el.addEventListener('change', scheduleSaveConfig));
   map.on('moveend', scheduleSaveConfig);

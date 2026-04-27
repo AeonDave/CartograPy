@@ -31,6 +31,7 @@ import { initMagDisplay } from './geomag.js';
 import { routeFinish, routeUndo, setupRouteUI } from './route.js';
 import { initSnap } from './snap.js';
 import { initCompassControl } from './compass.js';
+import { initTraffic } from './traffic.js';
 
 // ---------------- Sidebar ----------------
 document.getElementById('toggleSidebar').addEventListener('click', () => {
@@ -322,4 +323,4 @@ loadSources()
   .then(() => loadLanguage('en'))
   .then(() => populateOverlayPanel())
   .then(() => loadConfig())
-  .then(() => { initMagDisplay(); setTimeout(updateOverlays, 500); });
+  .then(() => { initTraffic(); initMagDisplay(); setTimeout(updateOverlays, 500); });

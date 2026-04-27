@@ -39,6 +39,9 @@ export function applyTranslations() {
   document.querySelectorAll('[data-i18n-label]').forEach(el => {
     el.label = t(el.dataset.i18nLabel);
   });
+  document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+    el.setAttribute('aria-label', t(el.dataset.i18nAriaLabel));
+  });
   // Re-render lists whose contents depend on translated strings.
   renderWaypointList();
 }
