@@ -74,6 +74,7 @@ export function scheduleGridUpdate() {
 async function fetchGrid() {
   if (state.gridLayer) { map.removeLayer(state.gridLayer); state.gridLayer = null; }
   const gridType = $gridType.value;
+  state.gridEpsg = null;
   if (gridType === 'none') return;
   const c = map.getCenter();
   const scale = parseInt($scale.value) || 25000;
@@ -87,6 +88,7 @@ async function fetchGrid() {
     const res = await fetch(url);
     const geojson = await res.json();
     if (geojson.error) return;
+    state.gridEpsg = geojson.epsg || null;
     state.gridLayer = L.geoJSON(geojson, {
       style: { color: '#1e40af', weight: 1.5, opacity: 0.6 },
       onEachFeature: (feature, layer) => {

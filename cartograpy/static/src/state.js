@@ -14,6 +14,7 @@ export const PAPERS = {
 export const TOOL_COLORS = {
   ruler: '#dc2626', protractor: '#7c3aed',
   line: '#0891b2', compass: '#ea580c',
+  route: '#16a34a',
 };
 
 export const MAX_SUGGESTIONS = 8;
@@ -58,6 +59,7 @@ export const state = {
   // Map / print rect / grid (owned by main.js)
   printRect: null,
   gridLayer: null,
+  gridEpsg: null,
   gridTimeout: null,
   // Search
   suggestController: null,
@@ -82,6 +84,7 @@ export const rulerHistory = [];
 export const protHistory = [];
 export const lineHistory = [];
 export const compassHistory = [];
+export const routeHistory = [];
 
 export const sheetDividers = [];
 export const tileLayers = {};        // name -> Leaflet layer (filled by loadSources)

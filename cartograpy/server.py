@@ -22,9 +22,14 @@ from urllib.parse import parse_qs, quote, unquote, urlparse
 import urllib.request
 from io import BytesIO
 
+from .elevation import densify, fetch_profile, profile_stats
 from .export import export_map_pdf
 from .geocoder import autocomplete, geocode
+from .geomag import compute_geomag
+from .gpx import parse_gpx, serialize_gpx
 from .grid import GRID_SYSTEMS, compute_grid, parse_coords
+from .osm_features import query_features as osm_query_features
+from .routing import PROFILE_KEYS, route as routing_route
 from .runtime import get_data_dir
 from .tiles import TileCache, TILE_SOURCES
 from .utils import PAPER_SIZES, SCALES, auto_grid_spacing, compute_sheet_layout
@@ -161,6 +166,10 @@ class _Handler(BaseHTTPRequestHandler):
             self._handle_tools_load(qs)
         elif path == "/api/weather":
             self._handle_weather(qs)
+        elif path == "/api/declination":
+            self._handle_declination(qs)
+        elif path == "/api/osm_snap":
+            self._handle_osm_snap(qs)
         elif path.startswith("/api/tile/"):
             self._handle_tile_proxy(path)
         elif path.startswith("/lang/") and path.endswith(".json"):
@@ -177,7 +186,14 @@ class _Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length) if length else b"{}"
-        params = json.loads(body)
+        try:
+            params = json.loads(body)
+        except json.JSONDecodeError as exc:
+            self._json({"error": f"invalid JSON: {exc.msg}"}, 400)
+            return
+        if not isinstance(params, dict):
+            self._json({"error": "JSON body must be an object"}, 400)
+            return
         if parsed.path == "/api/export":
             self._handle_export(params)
         elif parsed.path == "/api/config":
@@ -190,6 +206,14 @@ class _Handler(BaseHTTPRequestHandler):
             self._handle_tools_save(params)
         elif parsed.path == "/api/tools/delete":
             self._handle_tools_delete(params)
+        elif parsed.path == "/api/elevation":
+            self._handle_elevation(params)
+        elif parsed.path == "/api/gpx/import":
+            self._handle_gpx_import(params)
+        elif parsed.path == "/api/gpx/export":
+            self._handle_gpx_export(params)
+        elif parsed.path == "/api/route":
+            self._handle_route(params)
         else:
             self._404()
 
@@ -353,6 +377,111 @@ class _Handler(BaseHTTPRequestHandler):
         except Exception as exc:
             self._json({"error": str(exc)}, 400)
 
+    def _handle_declination(self, qs):
+        """Return magnetic declination + grid convergence at a point."""
+        try:
+            lat = float(qs["lat"][0])
+            lon = float(qs["lon"][0])
+            epsg = int(qs.get("epsg", ["0"])[0]) or None
+        except (KeyError, ValueError, IndexError):
+            self._json({"error": "missing lat/lon"}, 400)
+            return
+        info = compute_geomag(lat, lon, epsg)
+        self._json({
+            "declination": info.declination_deg,
+            "convergence": info.convergence_deg,
+            "grid_magnetic": info.grid_magnetic_deg,
+            "model": info.model,
+            "year": info.year,
+        })
+
+    def _handle_elevation(self, params):
+        """Resolve elevations for a polyline, returning a sampled profile."""
+        pts_raw = params.get("points") or []
+        try:
+            pts = [(float(p[0]), float(p[1])) for p in pts_raw if len(p) >= 2]
+        except (TypeError, ValueError):
+            self._json({"error": "bad points"}, 400)
+            return
+        if len(pts) < 2:
+            self._json({"error": "need >= 2 points"}, 400)
+            return
+        try:
+            max_step = float(params.get("max_step", 200.0))
+            max_total = int(params.get("max_total", 200))
+        except (TypeError, ValueError):
+            self._json({"error": "bad sampling parameters"}, 400)
+            return
+        max_step = max(10.0, min(5000.0, max_step))
+        max_total = max(2, min(200, max_total))
+        sampled = densify(pts, max_step_m=max_step, max_total=max_total)
+        profile = fetch_profile(sampled)
+        self._json({"profile": profile, "stats": profile_stats(profile)})
+
+    def _handle_gpx_import(self, params):
+        text = params.get("text", "")
+        if not isinstance(text, str) or not text.strip():
+            self._json({"error": "missing text"}, 400)
+            return
+        try:
+            self._json(parse_gpx(text))
+        except ValueError as exc:
+            self._json({"error": str(exc)}, 400)
+
+    def _handle_gpx_export(self, params):
+        wps = params.get("waypoints") or []
+        drawings = params.get("drawings") or []
+        try:
+            xml = serialize_gpx(wps, drawings)
+        except Exception as exc:
+            self._json({"error": str(exc)}, 500)
+            return
+        body = xml.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/gpx+xml; charset=utf-8")
+        self.send_header("Content-Disposition",
+                         'attachment; filename="cartograpy.gpx"')
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _handle_route(self, params):
+        """Compute a hiking / MTB / cycling route via BRouter."""
+        profile = str(params.get("profile") or "").strip()
+        pts_raw = params.get("points") or []
+        if profile not in PROFILE_KEYS:
+            self._json({"error": f"unknown profile: {profile}"}, 400)
+            return
+        try:
+            pts = [(float(p[0]), float(p[1])) for p in pts_raw if len(p) >= 2]
+        except (TypeError, ValueError):
+            self._json({"error": "bad points"}, 400)
+            return
+        if len(pts) < 2:
+            self._json({"error": "need >= 2 points"}, 400)
+            return
+        try:
+            self._json(routing_route(profile, pts))
+        except ValueError as exc:
+            self._json({"error": str(exc)}, 502)
+
+    def _handle_osm_snap(self, qs):
+        """Return nearby snap features (peaks, trail vertices) for a bbox."""
+        try:
+            s = float(qs["s"][0])
+            w = float(qs["w"][0])
+            n = float(qs["n"][0])
+            e = float(qs["e"][0])
+        except (KeyError, ValueError, IndexError):
+            self._json({"error": "missing bbox (s,w,n,e)"}, 400)
+            return
+        types_raw = qs.get("types", ["peak,trail"])[0]
+        types = tuple(t.strip() for t in types_raw.split(",") if t.strip())
+        try:
+            self._json(osm_query_features(s, w, n, e, types))
+        except ValueError as exc:
+            self._json({"error": str(exc)}, 400)
+
     def _handle_weather(self, qs):
         """Proxy hourly weather forecast from Open-Meteo (free, no API key)."""
         try:
@@ -400,7 +529,7 @@ class _Handler(BaseHTTPRequestHandler):
     def _handle_config_save(self, params):
         # sanitize: only accept known keys
         allowed = {"scale", "paper", "landscape", "source", "dpi",
-                   "mapTextScale", "gridType", "gridScale", "fullLabels",
+                   "mapTextScale", "bearing", "gridType", "gridScale", "fullLabels",
                    "lat", "lon", "zoom", "language", "sheets",
                    "owmApiKey", "searchHistory", "overlays"}
         clean = {k: v for k, v in params.items() if k in allowed}

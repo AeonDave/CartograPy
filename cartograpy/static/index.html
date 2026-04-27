@@ -6,6 +6,7 @@
 <title>CartograPy — Print Maps to Scale</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-rotate@0.2.8/dist/leaflet-rotate-src.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
 <link rel="stylesheet" href="/style.css"/>
 </head>
@@ -86,6 +87,10 @@
       <div class="field">
         <label data-i18n="label.mapTextScale">Map text %:</label>
         <input type="number" id="mapTextScale" value="50" min="1" max="100" step="1">
+      </div>
+      <div class="field">
+        <label data-i18n="label.bearing">Bearing °:</label>
+        <input type="number" id="bearing" value="0" min="0" max="359" step="1">
       </div>
     </div>
   </details>
@@ -184,6 +189,7 @@
         <button class="btn-tool" id="btnProtractor"><i class="fa-solid fa-drafting-compass"></i> <span data-i18n="btn.protractor">Protractor</span></button>
         <button class="btn-tool" id="btnLine"><i class="fa-solid fa-ruler-horizontal"></i> <span data-i18n="btn.line">Line tool</span></button>
         <button class="btn-tool" id="btnCompass"><i class="fa-regular fa-circle"></i> <span data-i18n="btn.compass">Compass</span></button>
+        <button class="btn-tool" id="btnRoute"><i class="fa-solid fa-route"></i> <span data-i18n="btn.route">Route</span></button>
       </div>
       <!-- Active tool info (only one visible at a time) -->
       <div id="rulerInfo" style="display:none; margin-top:6px; font-size:12px; color:#475569;">
@@ -203,16 +209,46 @@
         <p><i class="fa-solid fa-circle-info"></i> <span data-i18n="tool.compass.info">Click center, then move for radius. Click to fix.</span></p>
         <div id="compassResult" style="font-weight:700; font-size:14px; color:#1e293b; margin-top:4px;"></div>
       </div>
+      <div id="routeInfo" style="display:none; margin-top:6px; font-size:12px; color:#475569;">
+        <p><i class="fa-solid fa-circle-info"></i> <span data-i18n="tool.route.info">Click two or more points, then press Calculate. Routing via BRouter.</span></p>
+        <div class="field" style="margin-top:4px;">
+          <label style="font-size:11px; font-weight:600; color:#475569; flex:0 0 auto;" data-i18n="tool.route.profile">Profile:</label>
+          <select id="routeProfile" style="flex:1; font-size:12px;">
+            <option value="hiking" data-i18n="route.hiking">Hiking (mountain)</option>
+            <option value="trekking" data-i18n="route.trekking">Trekking</option>
+            <option value="foot" data-i18n="route.foot">Foot (urban)</option>
+            <option value="mtb" data-i18n="route.mtb">MTB</option>
+            <option value="bike" data-i18n="route.bike">Bicycle</option>
+          </select>
+        </div>
+        <div id="routeDraftPoints" class="route-draft-list"></div>
+        <div style="display:flex; gap:4px; margin-top:4px;">
+          <button class="btn btn-sm btn-success" id="btnRouteDone" style="flex:1;">
+            <i class="fa-solid fa-route"></i> <span data-i18n="btn.calculate">Calculate</span>
+          </button>
+          <button class="btn btn-sm btn-secondary" id="btnRouteCancel" style="flex:1;">
+            <i class="fa-solid fa-xmark"></i> <span data-i18n="btn.cancel">Cancel</span>
+          </button>
+        </div>
+        <div id="routeResult" style="font-weight:700; font-size:14px; color:#1e293b; margin-top:4px;"></div>
+      </div>
       <!-- All tool histories -->
       <div id="toolHistorySep" style="display:none; margin-top:8px; border-top:1px solid #e2e8f0; padding-top:4px;"></div>
       <div id="rulerHistory"></div>
       <div id="protractorHistory" style="margin-top:4px;"></div>
       <div id="lineHistory" style="margin-top:4px;"></div>
       <div id="compassHistory" style="margin-top:4px;"></div>
+      <div id="routeHistory" style="margin-top:4px;"></div>
       <!-- Tool file management -->
       <div style="margin-top:8px; padding-top:6px; border-top:1px solid #e2e8f0;">
         <label style="font-size:11px; font-weight:600; color:#64748b; display:flex; align-items:center; gap:4px; cursor:pointer;">
           <input type="checkbox" id="chkSnapWp"> <span data-i18n="tool.snapWp">Snap to waypoints</span>
+        </label>
+        <label style="font-size:11px; font-weight:600; color:#64748b; display:flex; align-items:center; gap:4px; cursor:pointer;">
+          <input type="checkbox" id="chkSnapPeaks"> <span data-i18n="tool.snapPeaks">Snap to peaks (OSM)</span>
+        </label>
+        <label style="font-size:11px; font-weight:600; color:#64748b; display:flex; align-items:center; gap:4px; cursor:pointer;">
+          <input type="checkbox" id="chkSnapTrails"> <span data-i18n="tool.snapTrails">Snap to trails (OSM)</span>
         </label>
         <label style="font-size:11px; font-weight:600; color:#64748b; display:flex; align-items:center; gap:4px; cursor:pointer;">
           <input type="checkbox" id="chkToolsInPdf" checked> <span data-i18n="tool.exportPdf">Include tools in PDF</span>

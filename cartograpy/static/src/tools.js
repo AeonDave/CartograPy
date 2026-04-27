@@ -1,13 +1,17 @@
 // ==============================================================
 // Tools — Ruler, Protractor (Goniometro), Line (Squadra), Compass
 // ==============================================================
-import { map, $btnRuler, $btnProtractor, $btnLine, $btnCompass,
+import { map, $btnRuler, $btnProtractor, $btnLine, $btnCompass, $btnRoute,
          $mobileToolBar, $mtbDone, $mtbUndo, status,
          closeSidebarMobile, showMobileToolBar, hideMobileToolBar } from './core.js';
-import { state, waypoints, TOOL_COLORS, isTouch, SNAP_PX,
-         rulerHistory, protHistory, lineHistory, compassHistory } from './state.js';
+import { state, TOOL_COLORS, isTouch,
+         rulerHistory, protHistory, lineHistory, compassHistory,
+         routeHistory } from './state.js';
 import { t } from './i18n.js';
 import { renderWaypointMarkers, deactivateWaypoint } from './waypoints.js';
+import { snapPoint } from './snap.js';
+import { activateRoute, deactivateRoute, formatRouteSummary,
+         setRouteHistoryRenderer } from './route.js';
 
 // ----------------------------------------------------------------
 // Geometry helpers (pure)
@@ -58,18 +62,12 @@ function drawAngleArc(vertex, p1, p2, angleDeg, color) {
   return L.polyline(pts, { color, weight: 2, dashArray: '4 3' }).addTo(map);
 }
 
-// Snap a click to the nearest waypoint within SNAP_PX pixels (when enabled).
+// Snap a click to the nearest waypoint or OSM feature within SNAP_PX
+// pixels (when the corresponding checkbox is enabled). The actual snap
+// logic lives in ``snap.js``; this thin wrapper is kept so the existing
+// call sites read naturally.
 function snapToWaypoint(latlng) {
-  if (!document.getElementById('chkSnapWp').checked || waypoints.length === 0) return latlng;
-  const pt = map.latLngToContainerPoint(latlng);
-  let best = null, bestDist = Infinity;
-  waypoints.forEach(wp => {
-    const wp_pt = map.latLngToContainerPoint(L.latLng(wp.lat, wp.lng));
-    const d = pt.distanceTo(wp_pt);
-    if (d < bestDist) { bestDist = d; best = wp; }
-  });
-  if (best && bestDist <= SNAP_PX) return L.latLng(best.lat, best.lng);
-  return latlng;
+  return snapPoint(latlng);
 }
 
 // ----------------------------------------------------------------
@@ -82,6 +80,7 @@ export function renderToolHistory(toolName, histArr, color) {
     const row = document.createElement('div');
     row.className = 'tool-hist-row';
     row.style.color = color;
+    row.style.flexWrap = 'wrap';
     const txt = document.createElement('span');
     txt.className = 'tool-hist-text';
     txt.textContent = `#${i + 1}  ${entry.text}`;
@@ -90,6 +89,21 @@ export function renderToolHistory(toolName, histArr, color) {
       const fg = L.featureGroup(entry.layers);
       try { map.fitBounds(fg.getBounds().pad(0.2)); } catch(e) {}
     });
+    // Elevation profile button — only for line-shaped tools (ruler, line, route).
+    let elev = null;
+    if (toolName === 'ruler' || toolName === 'line' || toolName === 'route') {
+      elev = document.createElement('span');
+      elev.className = 'tool-hist-elev';
+      elev.style.cssText = 'cursor:pointer;margin-right:4px;color:#0891b2;font-size:12px;';
+      elev.innerHTML = '<i class="fa-solid fa-mountain"></i>';
+      elev.title = t('elev.show');
+      elev.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        const pts = (entry.data && entry.data.points) || [];
+        const { showElevationProfile } = await import('./elevation.js');
+        showElevationProfile(row, pts);
+      });
+    }
     const del = document.createElement('span');
     del.className = 'tool-hist-del';
     del.innerHTML = '<i class="fa-solid fa-xmark"></i>';
@@ -100,12 +114,14 @@ export function renderToolHistory(toolName, histArr, color) {
       renderToolHistory(toolName, histArr, color);
     });
     row.appendChild(txt);
+    if (elev) row.appendChild(elev);
     row.appendChild(del);
     container.appendChild(row);
   });
   const sep = document.getElementById('toolHistorySep');
   const hasAny = rulerHistory.length || protHistory.length
-               || lineHistory.length || compassHistory.length;
+               || lineHistory.length || compassHistory.length
+               || routeHistory.length;
   sep.style.display = hasAny ? '' : 'none';
   updateLineUndoBtn();
 }
@@ -115,6 +131,7 @@ export function renderAllToolHistories() {
   renderToolHistory('protractor', protHistory, TOOL_COLORS.protractor);
   renderToolHistory('line', lineHistory, TOOL_COLORS.line);
   renderToolHistory('compass', compassHistory, TOOL_COLORS.compass);
+  renderToolHistory('route', routeHistory, TOOL_COLORS.route);
 }
 
 // Restore a single serialized tool entry on the map.
@@ -208,6 +225,11 @@ function restoreToolEntry(d) {
     const area = Math.PI * r * r;
     const shortTxt = `r=${formatDist(r)} A=${formatArea(area)}`;
     compassHistory.push({ layers, text: shortTxt, data: d });
+  } else if (d.type === 'route') {
+    if (!Array.isArray(d.points) || d.points.length < 2) return;
+    const pts = d.points.map(p => L.latLng(p[0], p[1]));
+    layers.push(L.polyline(pts, { color, weight: 4, opacity: 0.85 }).addTo(map));
+    routeHistory.push({ layers, text: formatRouteSummary(d), data: d });
   }
 }
 
@@ -217,11 +239,12 @@ export function collectToolData() {
   protHistory.forEach(e => { if (e.data) all.push(e.data); });
   lineHistory.forEach(e => { if (e.data) all.push(e.data); });
   compassHistory.forEach(e => { if (e.data) all.push(e.data); });
+  routeHistory.forEach(e => { if (e.data) all.push(e.data); });
   return all;
 }
 
 export function clearAllTools() {
-  [rulerHistory, protHistory, lineHistory, compassHistory].forEach(arr => {
+  [rulerHistory, protHistory, lineHistory, compassHistory, routeHistory].forEach(arr => {
     arr.forEach(e => e.layers.forEach(l => { try { map.removeLayer(l); } catch(x){} }));
     arr.length = 0;
   });
@@ -626,12 +649,13 @@ export function lineUndo() {
       lineTempLine = L.polyline([lastPt, lastPt],
         { color, weight: 2, dashArray: '6 4' }).addTo(map);
       lineMoveHandler = (ev) => {
-        lineTempLine.setLatLngs([linePoints[linePoints.length - 1], ev.latlng]);
-        const segDist = linePoints[linePoints.length - 1].distanceTo(ev.latlng);
+        const sp = snapToWaypoint(ev.latlng);
+        lineTempLine.setLatLngs([linePoints[linePoints.length - 1], sp]);
+        const segDist = linePoints[linePoints.length - 1].distanceTo(sp);
         const totalDist = lineTotalDist() + segDist;
         if (lineLiveDist) map.removeLayer(lineLiveDist);
-        const mLat = (linePoints[linePoints.length - 1].lat + ev.latlng.lat) / 2;
-        const mLng = (linePoints[linePoints.length - 1].lng + ev.latlng.lng) / 2;
+        const mLat = (linePoints[linePoints.length - 1].lat + sp.lat) / 2;
+        const mLng = (linePoints[linePoints.length - 1].lng + sp.lng) / 2;
         lineLiveDist = L.marker([mLat, mLng], { interactive: false, icon: L.divIcon({
           className: 'line-label',
           html: `<span style="background:rgba(255,255,255,0.85);color:#0891b2;font-weight:bold;`
@@ -644,7 +668,7 @@ export function lineUndo() {
         if (linePoints.length >= 2) {
           const prev = linePoints[linePoints.length - 2];
           const cur = linePoints[linePoints.length - 1];
-          const angle = computeAngle(prev, cur, ev.latlng);
+          const angle = computeAngle(prev, cur, sp);
           info += ` | ${t('msg.angle')}: ${angle.toFixed(1)}°`;
         }
         info += ` — ${t('msg.rightClickFinish')}`;
@@ -857,6 +881,7 @@ const TOOL_TABLE = {
   protractor: { btn: $btnProtractor, activate: activateProtractor, deactivate: deactivateProtractor },
   line:       { btn: $btnLine,       activate: activateLine,       deactivate: deactivateLine },
   compass:    { btn: $btnCompass,    activate: activateCompass,    deactivate: deactivateCompass },
+  route:      { btn: $btnRoute,      activate: activateRoute,      deactivate: deactivateRoute },
 };
 
 export function toggleTool(name) {
@@ -888,11 +913,21 @@ export function deactivateAllTools() {
 
 export function updateMobileToolBar() {
   if (!$mobileToolBar.classList.contains('visible')) return;
+  const doneLabel = $mtbDone.querySelector('span');
+  if (doneLabel) {
+    const key = state.activeTool === 'route' ? 'btn.calculate' : 'btn.done';
+    doneLabel.dataset.i18n = key;
+    doneLabel.textContent = t(key);
+  }
   $mtbDone.style.display =
-    (state.activeTool === 'line' && linePoints.length >= 2) ? '' : 'none';
+    ((state.activeTool === 'line' && linePoints.length >= 2)
+      || state.activeTool === 'route') ? '' : 'none';
   $mtbUndo.style.display =
-    (state.activeTool === 'line'
-      && (linePoints.length > 0 || lineHistory.length > 0)) ? '' : 'none';
+    ((state.activeTool === 'line'
+      && (linePoints.length > 0 || lineHistory.length > 0))
+      || state.activeTool === 'route') ? '' : 'none';
 }
+
+setRouteHistoryRenderer(() => renderToolHistory('route', routeHistory, TOOL_COLORS.route));
 
 export { lineFinish };

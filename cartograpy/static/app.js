@@ -1,33 +1,15 @@
 (() => {
+  var __defProp = Object.defineProperty;
+  var __getOwnPropNames = Object.getOwnPropertyNames;
+  var __esm = (fn, res) => function __init() {
+    return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+  };
+  var __export = (target, all) => {
+    for (var name in all)
+      __defProp(target, name, { get: all[name], enumerable: true });
+  };
+
   // cartograpy/static/src/core.js
-  var map = L.map("map", { zoomControl: false, attributionControl: true }).setView([44.49, 11.34], 13);
-  var wpMarkerLayer = L.layerGroup();
-  wpMarkerLayer.addTo(map);
-  var $ = (id) => document.getElementById(id);
-  var $search = $("search");
-  var $scale = $("scale");
-  var $paper = $("paper");
-  var $sheets = $("sheets");
-  var $landscape = $("landscape");
-  var $source = $("source");
-  var $gridType = $("gridType");
-  var $gridScale = $("gridScale");
-  var $fullLabels = $("fullLabels");
-  var $dpi = $("dpi");
-  var $mapTextScale = $("mapTextScale");
-  var $status = $("status");
-  var $results = $("results");
-  var $resList = $("resultsList");
-  var $btnExport = $("btnExport");
-  var $btnRuler = $("btnRuler");
-  var $btnProtractor = $("btnProtractor");
-  var $btnLine = $("btnLine");
-  var $btnCompass = $("btnCompass");
-  var $btnWpAddOnMap = $("btnWpAddOnMap");
-  var $mobileToolBar = $("mobileToolBar");
-  var $mtbDone = $("mtbDone");
-  var $mtbUndo = $("mtbUndo");
-  var $mtbCancel = $("mtbCancel");
   function status(msg) {
     $status.textContent = msg;
   }
@@ -42,93 +24,50 @@
   function hideMobileToolBar() {
     $mobileToolBar.classList.remove("visible");
   }
+  var map, wpMarkerLayer, $, $search, $scale, $paper, $sheets, $landscape, $source, $gridType, $gridScale, $fullLabels, $dpi, $mapTextScale, $bearing, $status, $results, $resList, $btnExport, $btnRuler, $btnProtractor, $btnLine, $btnCompass, $btnRoute, $btnWpAddOnMap, $mobileToolBar, $mtbDone, $mtbUndo, $mtbCancel;
+  var init_core = __esm({
+    "cartograpy/static/src/core.js"() {
+      map = L.map("map", {
+        zoomControl: false,
+        attributionControl: true,
+        rotate: true,
+        rotateControl: false,
+        // we render our own compass control
+        bearing: 0
+      }).setView([44.49, 11.34], 13);
+      wpMarkerLayer = L.layerGroup();
+      wpMarkerLayer.addTo(map);
+      $ = (id) => document.getElementById(id);
+      $search = $("search");
+      $scale = $("scale");
+      $paper = $("paper");
+      $sheets = $("sheets");
+      $landscape = $("landscape");
+      $source = $("source");
+      $gridType = $("gridType");
+      $gridScale = $("gridScale");
+      $fullLabels = $("fullLabels");
+      $dpi = $("dpi");
+      $mapTextScale = $("mapTextScale");
+      $bearing = $("bearing");
+      $status = $("status");
+      $results = $("results");
+      $resList = $("resultsList");
+      $btnExport = $("btnExport");
+      $btnRuler = $("btnRuler");
+      $btnProtractor = $("btnProtractor");
+      $btnLine = $("btnLine");
+      $btnCompass = $("btnCompass");
+      $btnRoute = $("btnRoute");
+      $btnWpAddOnMap = $("btnWpAddOnMap");
+      $mobileToolBar = $("mobileToolBar");
+      $mtbDone = $("mtbDone");
+      $mtbUndo = $("mtbUndo");
+      $mtbCancel = $("mtbCancel");
+    }
+  });
 
   // cartograpy/static/src/state.js
-  var PAPERS = {
-    A4: [210, 297],
-    A3: [297, 420],
-    A2: [420, 594],
-    A1: [594, 841],
-    Letter: [216, 279],
-    Legal: [216, 356]
-  };
-  var TOOL_COLORS = {
-    ruler: "#dc2626",
-    protractor: "#7c3aed",
-    line: "#0891b2",
-    compass: "#ea580c"
-  };
-  var MAX_SUGGESTIONS = 8;
-  var MAX_HISTORY = 10;
-  var SNAP_PX = 15;
-  var WP_ICONS = [
-    { fa: "fa-location-dot", labelKey: "wpIcon.pin" },
-    { fa: "fa-flag", labelKey: "wpIcon.flag" },
-    { fa: "fa-campground", labelKey: "wpIcon.camp" },
-    { fa: "fa-mountain", labelKey: "wpIcon.mountain" },
-    { fa: "fa-house", labelKey: "wpIcon.house" },
-    { fa: "fa-tree", labelKey: "wpIcon.tree" },
-    { fa: "fa-car", labelKey: "wpIcon.car" },
-    { fa: "fa-person-hiking", labelKey: "wpIcon.hike" },
-    { fa: "fa-star", labelKey: "wpIcon.star" },
-    { fa: "fa-circle-exclamation", labelKey: "wpIcon.warning" },
-    { fa: "fa-camera", labelKey: "wpIcon.photo" },
-    { fa: "fa-utensils", labelKey: "wpIcon.restaurant" },
-    { fa: "fa-water", labelKey: "wpIcon.water" },
-    { fa: "fa-binoculars", labelKey: "wpIcon.viewpoint" },
-    { fa: "fa-cross", labelKey: "wpIcon.cross" }
-  ];
-  var WP_COLORS = [
-    "#dc2626",
-    "#ea580c",
-    "#d97706",
-    "#16a34a",
-    "#0891b2",
-    "#2563eb",
-    "#7c3aed",
-    "#db2777",
-    "#1e293b"
-  ];
-  var isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
-  var state = {
-    // i18n
-    currentLang: "en",
-    // Active tool
-    activeTool: null,
-    // null | 'ruler' | 'protractor' | 'line' | 'compass'
-    wpMapActive: false,
-    // Source bootstrap
-    sourcesPayload: null,
-    activeBaseLayerName: null,
-    // Map / print rect / grid (owned by main.js)
-    printRect: null,
-    gridLayer: null,
-    gridTimeout: null,
-    // Search
-    suggestController: null,
-    suggestTimeout: null,
-    // Weather
-    weatherLat: null,
-    weatherLon: null,
-    selectedHour: null,
-    // null = day summary, 0..23 = specific hour
-    lastWeatherData: null,
-    rainviewerTimestamps: null,
-    // Config debounce
-    cfgTimer: null
-  };
-  var waypoints = [];
-  var searchHistory = [];
-  var searchResults = [];
-  var suggestData = [];
-  var rulerHistory = [];
-  var protHistory = [];
-  var lineHistory = [];
-  var compassHistory = [];
-  var sheetDividers = [];
-  var tileLayers = {};
-  var selectedOverlays = /* @__PURE__ */ new Set();
-  var activeOverlays = /* @__PURE__ */ new Map();
   function setSearchResults(arr) {
     searchResults.length = 0;
     searchResults.push(...arr);
@@ -137,11 +76,101 @@
     suggestData.length = 0;
     suggestData.push(...arr);
   }
+  var PAPERS, TOOL_COLORS, MAX_SUGGESTIONS, MAX_HISTORY, SNAP_PX, WP_ICONS, WP_COLORS, isTouch, state, waypoints, searchHistory, searchResults, suggestData, rulerHistory, protHistory, lineHistory, compassHistory, routeHistory, sheetDividers, tileLayers, selectedOverlays, activeOverlays;
+  var init_state = __esm({
+    "cartograpy/static/src/state.js"() {
+      PAPERS = {
+        A4: [210, 297],
+        A3: [297, 420],
+        A2: [420, 594],
+        A1: [594, 841],
+        Letter: [216, 279],
+        Legal: [216, 356]
+      };
+      TOOL_COLORS = {
+        ruler: "#dc2626",
+        protractor: "#7c3aed",
+        line: "#0891b2",
+        compass: "#ea580c",
+        route: "#16a34a"
+      };
+      MAX_SUGGESTIONS = 8;
+      MAX_HISTORY = 10;
+      SNAP_PX = 15;
+      WP_ICONS = [
+        { fa: "fa-location-dot", labelKey: "wpIcon.pin" },
+        { fa: "fa-flag", labelKey: "wpIcon.flag" },
+        { fa: "fa-campground", labelKey: "wpIcon.camp" },
+        { fa: "fa-mountain", labelKey: "wpIcon.mountain" },
+        { fa: "fa-house", labelKey: "wpIcon.house" },
+        { fa: "fa-tree", labelKey: "wpIcon.tree" },
+        { fa: "fa-car", labelKey: "wpIcon.car" },
+        { fa: "fa-person-hiking", labelKey: "wpIcon.hike" },
+        { fa: "fa-star", labelKey: "wpIcon.star" },
+        { fa: "fa-circle-exclamation", labelKey: "wpIcon.warning" },
+        { fa: "fa-camera", labelKey: "wpIcon.photo" },
+        { fa: "fa-utensils", labelKey: "wpIcon.restaurant" },
+        { fa: "fa-water", labelKey: "wpIcon.water" },
+        { fa: "fa-binoculars", labelKey: "wpIcon.viewpoint" },
+        { fa: "fa-cross", labelKey: "wpIcon.cross" }
+      ];
+      WP_COLORS = [
+        "#dc2626",
+        "#ea580c",
+        "#d97706",
+        "#16a34a",
+        "#0891b2",
+        "#2563eb",
+        "#7c3aed",
+        "#db2777",
+        "#1e293b"
+      ];
+      isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+      state = {
+        // i18n
+        currentLang: "en",
+        // Active tool
+        activeTool: null,
+        // null | 'ruler' | 'protractor' | 'line' | 'compass'
+        wpMapActive: false,
+        // Source bootstrap
+        sourcesPayload: null,
+        activeBaseLayerName: null,
+        // Map / print rect / grid (owned by main.js)
+        printRect: null,
+        gridLayer: null,
+        gridEpsg: null,
+        gridTimeout: null,
+        // Search
+        suggestController: null,
+        suggestTimeout: null,
+        // Weather
+        weatherLat: null,
+        weatherLon: null,
+        selectedHour: null,
+        // null = day summary, 0..23 = specific hour
+        lastWeatherData: null,
+        rainviewerTimestamps: null,
+        // Config debounce
+        cfgTimer: null
+      };
+      waypoints = [];
+      searchHistory = [];
+      searchResults = [];
+      suggestData = [];
+      rulerHistory = [];
+      protHistory = [];
+      lineHistory = [];
+      compassHistory = [];
+      routeHistory = [];
+      sheetDividers = [];
+      tileLayers = {};
+      selectedOverlays = /* @__PURE__ */ new Set();
+      activeOverlays = /* @__PURE__ */ new Map();
+    }
+  });
 
   // cartograpy/static/src/waypoints.js
-  var selectedWpId = null;
-  var selectedIcon = WP_ICONS[0].fa;
-  var selectedColor = WP_COLORS[0];
   function getWaypointMapActive() {
     return state.wpMapActive;
   }
@@ -489,9 +518,19 @@
       colorGrid.appendChild(d);
     });
   }
+  var selectedWpId, selectedIcon, selectedColor;
+  var init_waypoints = __esm({
+    "cartograpy/static/src/waypoints.js"() {
+      init_core();
+      init_state();
+      init_i18n();
+      selectedWpId = null;
+      selectedIcon = WP_ICONS[0].fa;
+      selectedColor = WP_COLORS[0];
+    }
+  });
 
   // cartograpy/static/src/i18n.js
-  var _lang = {};
   function t(key, ...args) {
     let s = _lang[key] || key;
     args.forEach((a, i) => {
@@ -527,8 +566,1523 @@
     });
     renderWaypointList();
   }
+  var _lang;
+  var init_i18n = __esm({
+    "cartograpy/static/src/i18n.js"() {
+      init_state();
+      init_waypoints();
+      _lang = {};
+    }
+  });
+
+  // cartograpy/static/src/snap.js
+  function _bboxCovers(b, target) {
+    if (!b) return false;
+    const [s, w, n, e] = b;
+    const [ts, tw, tn, te] = target;
+    return ts >= s && tw >= w && tn <= n && te <= e;
+  }
+  function _currentBbox() {
+    const b = map.getBounds();
+    return [b.getSouth(), b.getWest(), b.getNorth(), b.getEast()];
+  }
+  function _expandedBbox(b) {
+    const [s, w, n, e] = b;
+    const dy = (n - s) * 0.3;
+    const dx = (e - w) * 0.3;
+    return [s - dy, w - dx, n + dy, e + dx];
+  }
+  function _wantedTypes() {
+    const types = [];
+    if (document.getElementById("chkSnapPeaks")?.checked) types.push("peak");
+    if (document.getElementById("chkSnapTrails")?.checked) types.push("trail");
+    return types;
+  }
+  async function refreshOsmSnapCache(force = false) {
+    const types = _wantedTypes();
+    if (!types.length) {
+      _osm.peaks.length = 0;
+      _osm.trailNodes.length = 0;
+      _osm.bbox = null;
+      return;
+    }
+    const view = _currentBbox();
+    if (!force && _bboxCovers(_osm.bbox, view)) return;
+    if (_osm.pending) return;
+    const fetchBbox = _expandedBbox(view);
+    _osm.pending = true;
+    try {
+      const [s, w, n, e] = fetchBbox;
+      const url = `/api/osm_snap?s=${s}&w=${w}&n=${n}&e=${e}&types=${types.join(",")}`;
+      const res = await fetch(url);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.error) return;
+      _osm.peaks = (data.peaks || []).map((p) => ({ lat: p.lat, lon: p.lon }));
+      const trailNodes = [];
+      (data.trails || []).forEach((t2) => {
+        (t2.coords || []).forEach(([lat, lon]) => trailNodes.push({ lat, lon }));
+      });
+      _osm.trailNodes = trailNodes;
+      _osm.bbox = fetchBbox;
+    } catch (e) {
+    } finally {
+      _osm.pending = false;
+    }
+  }
+  function snapPoint(latlng) {
+    const pt = map.latLngToContainerPoint(latlng);
+    let best = null;
+    let bestDist = Infinity;
+    const consider = (lat, lng) => {
+      const cp = map.latLngToContainerPoint(L.latLng(lat, lng));
+      const d = pt.distanceTo(cp);
+      if (d < bestDist && d <= SNAP_PX) {
+        bestDist = d;
+        best = L.latLng(lat, lng);
+      }
+    };
+    if (document.getElementById("chkSnapWp")?.checked) {
+      waypoints.forEach((w) => consider(w.lat, w.lng));
+    }
+    if (document.getElementById("chkSnapPeaks")?.checked) {
+      _osm.peaks.forEach((p) => consider(p.lat, p.lon));
+    }
+    if (document.getElementById("chkSnapTrails")?.checked) {
+      _osm.trailNodes.forEach((p) => consider(p.lat, p.lon));
+    }
+    return best || latlng;
+  }
+  function initSnap() {
+    map.on("moveend", () => {
+      if (_moveTimer) clearTimeout(_moveTimer);
+      _moveTimer = setTimeout(() => refreshOsmSnapCache(false), 600);
+    });
+    ["chkSnapPeaks", "chkSnapTrails"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener("change", () => refreshOsmSnapCache(true));
+    });
+  }
+  var _osm, _moveTimer;
+  var init_snap = __esm({
+    "cartograpy/static/src/snap.js"() {
+      init_core();
+      init_state();
+      _osm = {
+        peaks: [],
+        // {lat, lon}
+        trailNodes: [],
+        // {lat, lon} — flattened trail vertices
+        bbox: null,
+        // [s, w, n, e]
+        pending: false
+      };
+      _moveTimer = null;
+    }
+  });
+
+  // cartograpy/static/src/route.js
+  function _color() {
+    return TOOL_COLORS.route;
+  }
+  function _formatDist(m) {
+    if (m >= 1e3) return (m / 1e3).toFixed(2) + " km";
+    return m.toFixed(1) + " m";
+  }
+  function _formatDuration(seconds) {
+    const m = Math.round((seconds || 0) / 60);
+    return m >= 60 ? `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}` : `${m}m`;
+  }
+  function _distanceFromPoints(points) {
+    if (!Array.isArray(points) || points.length < 2) return 0;
+    let dist = 0;
+    for (let i = 1; i < points.length; i++) {
+      dist += L.latLng(points[i - 1][0], points[i - 1][1]).distanceTo(L.latLng(points[i][0], points[i][1]));
+    }
+    return dist;
+  }
+  function formatRouteSummary(data) {
+    const dist = data.distance != null ? Number(data.distance) : _distanceFromPoints(data.points);
+    const parts = [data.profile || "route", _formatDist(Number.isFinite(dist) ? dist : 0)];
+    if (data.ascend != null) parts.push(`\u2191${Math.round(Number(data.ascend) || 0)} m`);
+    if (data.duration != null) parts.push(_formatDuration(Number(data.duration) || 0));
+    return parts.join(" \u2014 ");
+  }
+  function setRouteHistoryRenderer(fn) {
+    _renderHistory = fn;
+  }
+  function _renderRouteHistory() {
+    if (_renderHistory) _renderHistory();
+  }
+  function _refreshTempLine() {
+    if (_tempLine) {
+      map.removeLayer(_tempLine);
+      _tempLine = null;
+    }
+    if (_points.length >= 2) {
+      _tempLine = L.polyline(
+        _points,
+        { color: _color(), weight: 2, dashArray: "6 4", opacity: 0.7 }
+      ).addTo(map);
+    }
+  }
+  function _removeDraftPoint(index) {
+    const marker = _markers[index];
+    if (marker) map.removeLayer(marker);
+    _points.splice(index, 1);
+    _markers.splice(index, 1);
+    _refreshTempLine();
+    _updateDraftResult();
+  }
+  function _renderDraftPoints() {
+    const list = document.getElementById("routeDraftPoints");
+    if (!list) return;
+    list.innerHTML = "";
+    _points.forEach((pt, i) => {
+      const row = document.createElement("div");
+      row.className = "route-draft-row";
+      row.style.color = _color();
+      const txt = document.createElement("span");
+      txt.className = "tool-hist-text";
+      txt.textContent = `#${i + 1}  ${pt.lat.toFixed(5)}, ${pt.lng.toFixed(5)}`;
+      txt.addEventListener("click", () => map.panTo(pt));
+      const del = document.createElement("span");
+      del.className = "tool-hist-del";
+      del.title = t("route.removePoint");
+      del.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+      del.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        _removeDraftPoint(i);
+      });
+      row.appendChild(txt);
+      row.appendChild(del);
+      list.appendChild(row);
+    });
+  }
+  function _resetDraw({ clearResult = true } = {}) {
+    _markers.forEach((m) => map.removeLayer(m));
+    _markers = [];
+    _points = [];
+    if (_tempLine) {
+      map.removeLayer(_tempLine);
+      _tempLine = null;
+    }
+    _renderDraftPoints();
+    if (clearResult) {
+      const r = document.getElementById("routeResult");
+      if (r) r.textContent = "";
+    }
+  }
+  function _updateDraftResult() {
+    const r = document.getElementById("routeResult");
+    if (!r) return;
+    if (!_pending) r.textContent = "";
+    _renderDraftPoints();
+  }
+  function _onClick(e) {
+    const pt = snapPoint(e.latlng);
+    _points.push(pt);
+    _markers.push(L.circleMarker(
+      pt,
+      { radius: 5, color: _color(), fillColor: _color(), fillOpacity: 1 }
+    ).addTo(map));
+    _refreshTempLine();
+    _updateDraftResult();
+  }
+  async function routeFinish() {
+    if (_pending) return;
+    if (_points.length < 2) {
+      const r2 = document.getElementById("routeResult");
+      if (r2) r2.textContent = t("route.needTwo") || "Need \u2265 2 points";
+      return;
+    }
+    const profile = document.getElementById("routeProfile").value;
+    const payload = {
+      profile,
+      points: _points.map((p) => [p.lat, p.lng])
+    };
+    const r = document.getElementById("routeResult");
+    if (r) r.textContent = t("route.computing") || "Routing\u2026";
+    _pending = true;
+    try {
+      const res = await fetch("/api/route", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        if (r) r.textContent = (t("route.error") || "Routing error") + ": " + (err.error || res.status);
+        return;
+      }
+      const data = await res.json();
+      const coords = data.coords || [];
+      if (coords.length < 2) {
+        if (r) r.textContent = t("route.empty") || "Empty route";
+        return;
+      }
+      const layers = [];
+      const latlngs = coords.map((c) => L.latLng(c[0], c[1]));
+      layers.push(L.polyline(
+        latlngs,
+        { color: _color(), weight: 4, opacity: 0.85 }
+      ).addTo(map));
+      const routeData = {
+        type: "route",
+        profile: data.profile,
+        distance: data.distance,
+        ascend: data.ascend,
+        duration: data.duration,
+        points: coords
+        // [[lat, lon], ...]
+      };
+      const summary = formatRouteSummary(routeData);
+      routeHistory.push({
+        layers,
+        text: summary,
+        data: routeData
+      });
+      _renderRouteHistory();
+      if (r) r.textContent = summary;
+      _resetDraw({ clearResult: false });
+    } catch (e) {
+      if (r) r.textContent = (t("route.error") || "Routing error") + ": " + e.message;
+    } finally {
+      _pending = false;
+    }
+  }
+  function routeUndo() {
+    if (_points.length) {
+      _points.pop();
+      const marker = _markers.pop();
+      if (marker) map.removeLayer(marker);
+      _refreshTempLine();
+      _updateDraftResult();
+      return;
+    }
+    if (routeHistory.length) {
+      const last = routeHistory.pop();
+      last.layers.forEach((l) => {
+        try {
+          map.removeLayer(l);
+        } catch (e) {
+        }
+      });
+      _renderRouteHistory();
+    }
+  }
+  function activateRoute() {
+    document.getElementById("routeInfo").style.display = "block";
+    document.getElementById("routeResult").textContent = "";
+    _renderDraftPoints();
+    map.getContainer().classList.add("ruler-cursor");
+    map.on("click", _onClick);
+    refreshOsmSnapCache(false);
+  }
+  function deactivateRoute() {
+    document.getElementById("routeInfo").style.display = "none";
+    map.getContainer().classList.remove("ruler-cursor");
+    map.off("click", _onClick);
+    _resetDraw();
+  }
+  function setupRouteUI() {
+    const done = document.getElementById("btnRouteDone");
+    const cancel = document.getElementById("btnRouteCancel");
+    if (done) done.addEventListener("click", routeFinish);
+    if (cancel) cancel.addEventListener("click", () => _resetDraw());
+  }
+  var _points, _markers, _tempLine, _renderHistory, _pending;
+  var init_route = __esm({
+    "cartograpy/static/src/route.js"() {
+      init_core();
+      init_state();
+      init_i18n();
+      init_snap();
+      _points = [];
+      _markers = [];
+      _tempLine = null;
+      _renderHistory = null;
+      _pending = false;
+    }
+  });
+
+  // cartograpy/static/src/elevation.js
+  var elevation_exports = {};
+  __export(elevation_exports, {
+    showElevationProfile: () => showElevationProfile
+  });
+  function _formatEle(m) {
+    if (m === null || m === void 0) return "\u2014";
+    return Math.round(m) + " m";
+  }
+  function _renderChart(profile, stats) {
+    const samples = profile.filter((p) => p.ele !== null && p.ele !== void 0);
+    if (samples.length < 2) {
+      return `<div style="font-size:11px;color:#94a3b8;">${t("elev.noData")}</div>`;
+    }
+    const minE = stats.min;
+    const maxE = stats.max;
+    const eRange = Math.max(1, maxE - minE);
+    const dMax = profile[profile.length - 1].dist;
+    if (!Number.isFinite(dMax) || dMax <= 0) {
+      return `<div style="font-size:11px;color:#94a3b8;">${t("elev.noData")}</div>`;
+    }
+    const x = (d) => PAD_L + d / dMax * (W - PAD_L - PAD_R);
+    const y = (e) => PAD_T + (1 - (e - minE) / eRange) * (H - PAD_T - PAD_B);
+    let pts = "";
+    let line = "";
+    profile.forEach((p, i) => {
+      if (p.ele === null || p.ele === void 0) return;
+      const px = x(p.dist).toFixed(1);
+      const py = y(p.ele).toFixed(1);
+      pts += `${px},${py} `;
+      line += line === "" ? `M${px},${py}` : ` L${px},${py}`;
+    });
+    const baseY = (H - PAD_B).toFixed(1);
+    const fill = `M${x(0).toFixed(1)},${baseY} L${pts}L${x(dMax).toFixed(1)},${baseY}Z`;
+    const midE = (minE + maxE) / 2;
+    const yLabels = [
+      [maxE, y(maxE)],
+      [midE, y(midE)],
+      [minE, y(minE)]
+    ].map(
+      ([e, py]) => `<text x="${PAD_L - 3}" y="${(py + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="#475569">${Math.round(e)}</text><line x1="${PAD_L}" x2="${W - PAD_R}" y1="${py.toFixed(1)}" y2="${py.toFixed(1)}" stroke="#e2e8f0" stroke-width="0.5"/>`
+    ).join("");
+    const xLabels = [0, 0.5, 1].map((f) => {
+      const d = dMax * f;
+      return `<text x="${x(d).toFixed(1)}" y="${(H - 3).toFixed(1)}" text-anchor="${f === 0 ? "start" : f === 1 ? "end" : "middle"}" font-size="9" fill="#475569">${formatDist(d)}</text>`;
+    }).join("");
+    const statsLine = `<div style="font-size:11px;color:#475569;margin-top:2px;display:flex;gap:8px;flex-wrap:wrap;"><span><i class="fa-solid fa-arrow-up" style="color:#16a34a"></i> ${Math.round(stats.gain)} m</span><span><i class="fa-solid fa-arrow-down" style="color:#dc2626"></i> ${Math.round(stats.loss)} m</span><span>${t("elev.min")}: ${_formatEle(stats.min)}</span><span>${t("elev.max")}: ${_formatEle(stats.max)}</span></div>`;
+    return `
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;background:#f8fafc;border-radius:4px;">
+      ${yLabels}
+      <path d="${fill}" fill="rgba(8,145,178,0.18)"/>
+      <path d="${line}" fill="none" stroke="#0891b2" stroke-width="1.5"/>
+      ${xLabels}
+    </svg>
+    ${statsLine}
+  `;
+  }
+  async function showElevationProfile(container, points) {
+    if (!container || !points || points.length < 2) return;
+    const existing = container.querySelector(".elev-panel");
+    if (existing) {
+      existing.remove();
+      return;
+    }
+    const panel = document.createElement("div");
+    panel.className = "elev-panel";
+    panel.style.cssText = "flex:1 1 100%;margin-top:4px;padding:4px 6px;background:#fff;border:1px solid #e2e8f0;border-radius:4px;";
+    panel.innerHTML = `<div style="font-size:11px;color:#94a3b8;">${t("elev.loading")}\u2026</div>`;
+    container.appendChild(panel);
+    try {
+      const res = await fetch("/api/elevation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ points })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      panel.innerHTML = _renderChart(data.profile, data.stats);
+    } catch (e) {
+      panel.innerHTML = `<div style="font-size:11px;color:#dc2626;">${t("elev.error")}: ${e.message}</div>`;
+    }
+  }
+  var W, H, PAD_L, PAD_R, PAD_T, PAD_B;
+  var init_elevation = __esm({
+    "cartograpy/static/src/elevation.js"() {
+      init_i18n();
+      init_tools();
+      W = 320;
+      H = 90;
+      PAD_L = 32;
+      PAD_R = 6;
+      PAD_T = 6;
+      PAD_B = 16;
+    }
+  });
+
+  // cartograpy/static/src/tools.js
+  function formatDist(m) {
+    if (m >= 1e3) return (m / 1e3).toFixed(2) + " km";
+    return m.toFixed(1) + " m";
+  }
+  function formatArea(m2) {
+    if (m2 >= 1e6) return (m2 / 1e6).toFixed(3) + " km\xB2";
+    if (m2 >= 1e4) return (m2 / 1e4).toFixed(2) + " ha";
+    return m2.toFixed(1) + " m\xB2";
+  }
+  function bearing(a, b) {
+    const dLon = (b.lng - a.lng) * Math.PI / 180;
+    const lat1 = a.lat * Math.PI / 180, lat2 = b.lat * Math.PI / 180;
+    const y = Math.sin(dLon) * Math.cos(lat2);
+    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+  }
+  function computeAngle(a, vertex, b) {
+    const b1 = bearing(vertex, a);
+    const b2 = bearing(vertex, b);
+    let angle = Math.abs(b2 - b1);
+    if (angle > 180) angle = 360 - angle;
+    return angle;
+  }
+  function drawAngleArc(vertex, p1, p2, angleDeg, color) {
+    const r = Math.min(vertex.distanceTo(p1), vertex.distanceTo(p2), 5e4) * 0.25;
+    const b1 = bearing(vertex, p1);
+    const b2 = bearing(vertex, p2);
+    let start = b1, end = b2;
+    let diff = (end - start + 360) % 360;
+    if (diff > 180) {
+      start = b2;
+      diff = 360 - diff;
+    }
+    const pts = [];
+    const steps = Math.max(20, Math.round(diff));
+    for (let i = 0; i <= steps; i++) {
+      const a = (start + diff * i / steps) * Math.PI / 180;
+      const dLat = r * Math.cos(a) / 111320;
+      const dLon = r * Math.sin(a) / (111320 * Math.cos(vertex.lat * Math.PI / 180));
+      pts.push([vertex.lat + dLat, vertex.lng + dLon]);
+    }
+    return L.polyline(pts, { color, weight: 2, dashArray: "4 3" }).addTo(map);
+  }
+  function snapToWaypoint(latlng) {
+    return snapPoint(latlng);
+  }
+  function renderToolHistory(toolName, histArr, color) {
+    const container = document.getElementById(toolName + "History");
+    container.innerHTML = "";
+    histArr.forEach((entry, i) => {
+      const row = document.createElement("div");
+      row.className = "tool-hist-row";
+      row.style.color = color;
+      row.style.flexWrap = "wrap";
+      const txt = document.createElement("span");
+      txt.className = "tool-hist-text";
+      txt.textContent = `#${i + 1}  ${entry.text}`;
+      txt.title = t("msg.clickToCenter");
+      txt.addEventListener("click", () => {
+        const fg = L.featureGroup(entry.layers);
+        try {
+          map.fitBounds(fg.getBounds().pad(0.2));
+        } catch (e) {
+        }
+      });
+      let elev = null;
+      if (toolName === "ruler" || toolName === "line" || toolName === "route") {
+        elev = document.createElement("span");
+        elev.className = "tool-hist-elev";
+        elev.style.cssText = "cursor:pointer;margin-right:4px;color:#0891b2;font-size:12px;";
+        elev.innerHTML = '<i class="fa-solid fa-mountain"></i>';
+        elev.title = t("elev.show");
+        elev.addEventListener("click", async (ev) => {
+          ev.stopPropagation();
+          const pts = entry.data && entry.data.points || [];
+          const { showElevationProfile: showElevationProfile2 } = await Promise.resolve().then(() => (init_elevation(), elevation_exports));
+          showElevationProfile2(row, pts);
+        });
+      }
+      const del = document.createElement("span");
+      del.className = "tool-hist-del";
+      del.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+      del.title = t("msg.delete");
+      del.addEventListener("click", () => {
+        entry.layers.forEach((l) => {
+          try {
+            map.removeLayer(l);
+          } catch (e) {
+          }
+        });
+        histArr.splice(i, 1);
+        renderToolHistory(toolName, histArr, color);
+      });
+      row.appendChild(txt);
+      if (elev) row.appendChild(elev);
+      row.appendChild(del);
+      container.appendChild(row);
+    });
+    const sep = document.getElementById("toolHistorySep");
+    const hasAny = rulerHistory.length || protHistory.length || lineHistory.length || compassHistory.length || routeHistory.length;
+    sep.style.display = hasAny ? "" : "none";
+    updateLineUndoBtn();
+  }
+  function renderAllToolHistories() {
+    renderToolHistory("ruler", rulerHistory, TOOL_COLORS.ruler);
+    renderToolHistory("protractor", protHistory, TOOL_COLORS.protractor);
+    renderToolHistory("line", lineHistory, TOOL_COLORS.line);
+    renderToolHistory("compass", compassHistory, TOOL_COLORS.compass);
+    renderToolHistory("route", routeHistory, TOOL_COLORS.route);
+  }
+  function restoreToolEntry(d) {
+    const color = TOOL_COLORS[d.type];
+    if (!color) return;
+    const layers = [];
+    if (d.type === "ruler") {
+      const pts = d.points.map((p) => L.latLng(p[0], p[1]));
+      pts.forEach((p) => layers.push(L.circleMarker(
+        p,
+        { radius: 4, color, fillColor: color, fillOpacity: 1 }
+      ).addTo(map)));
+      layers.push(L.polyline(pts, { color, weight: 2.5 }).addTo(map));
+      const dist = pts[0].distanceTo(pts[1]);
+      const txt = formatDist(dist);
+      const midLat = (pts[0].lat + pts[1].lat) / 2, midLng = (pts[0].lng + pts[1].lng) / 2;
+      layers.push(L.marker([midLat, midLng], { interactive: false, icon: L.divIcon({
+        className: "ruler-label",
+        html: `<span style="background:rgba(255,255,255,0.9);color:${color};font-weight:bold;font-size:12px;padding:2px 6px;border-radius:3px;white-space:nowrap;pointer-events:none">${txt}</span>`,
+        iconAnchor: [0, 12]
+      }) }).addTo(map));
+      rulerHistory.push({ layers, text: txt, data: d });
+    } else if (d.type === "protractor") {
+      const pts = d.points.map((p) => L.latLng(p[0], p[1]));
+      pts.forEach((p) => layers.push(L.circleMarker(
+        p,
+        { radius: 4, color, fillColor: color, fillOpacity: 1 }
+      ).addTo(map)));
+      layers.push(L.polyline([pts[0], pts[1]], { color, weight: 2 }).addTo(map));
+      layers.push(L.polyline([pts[1], pts[2]], { color, weight: 2 }).addTo(map));
+      const angle = computeAngle(pts[0], pts[1], pts[2]);
+      const arc = drawAngleArc(pts[1], pts[0], pts[2], angle, color);
+      if (arc) layers.push(arc);
+      const txt = `${angle.toFixed(1)}\xB0`;
+      layers.push(L.marker([pts[1].lat, pts[1].lng], { interactive: false, icon: L.divIcon({
+        className: "prot-label",
+        html: `<span style="background:rgba(255,255,255,0.9);color:${color};font-weight:bold;font-size:12px;padding:2px 6px;border-radius:3px;white-space:nowrap;pointer-events:none">${txt}</span>`,
+        iconAnchor: [-8, 12]
+      }) }).addTo(map));
+      const d1 = pts[1].distanceTo(pts[0]), d2 = pts[1].distanceTo(pts[2]);
+      protHistory.push({
+        layers,
+        text: `${txt} (${formatDist(d1)} / ${formatDist(d2)})`,
+        data: d
+      });
+    } else if (d.type === "line") {
+      const pts = d.points.map((p) => L.latLng(p[0], p[1]));
+      const segLayers = [], segLabels = [];
+      pts.forEach((p) => layers.push(L.circleMarker(
+        p,
+        { radius: 4, color, fillColor: color, fillOpacity: 1 }
+      ).addTo(map)));
+      for (let i = 1; i < pts.length; i++) {
+        segLayers.push(L.polyline([pts[i - 1], pts[i]], { color, weight: 2.5 }).addTo(map));
+        const sd = pts[i - 1].distanceTo(pts[i]);
+        const ml = (pts[i - 1].lat + pts[i].lat) / 2;
+        const mg = (pts[i - 1].lng + pts[i].lng) / 2;
+        segLabels.push(L.marker([ml, mg], { interactive: false, icon: L.divIcon({
+          className: "line-label",
+          html: `<span style="background:rgba(255,255,255,0.9);color:${color};font-weight:bold;font-size:11px;padding:1px 5px;border-radius:3px;white-space:nowrap;pointer-events:none">${formatDist(sd)}</span>`,
+          iconAnchor: [0, 12]
+        }) }).addTo(map));
+      }
+      layers.push(...segLayers, ...segLabels);
+      let total = 0;
+      for (let i = 1; i < pts.length; i++) total += pts[i - 1].distanceTo(pts[i]);
+      const txt = `${pts.length} pt \u2014 ${formatDist(total)}`;
+      lineHistory.push({ layers, text: txt, data: d });
+    } else if (d.type === "compass") {
+      const center = L.latLng(d.center[0], d.center[1]);
+      const edge = L.latLng(d.edge[0], d.edge[1]);
+      const r = center.distanceTo(edge);
+      layers.push(L.circleMarker(
+        center,
+        { radius: 5, color, fillColor: color, fillOpacity: 1 }
+      ).addTo(map));
+      layers.push(L.circle(center, {
+        radius: r,
+        color,
+        weight: 2.5,
+        fill: true,
+        fillColor: color,
+        fillOpacity: 0.08
+      }).addTo(map));
+      layers.push(L.polyline([center, edge], { color, weight: 2 }).addTo(map));
+      layers.push(L.circleMarker(
+        edge,
+        { radius: 4, color, fillColor: color, fillOpacity: 1 }
+      ).addTo(map));
+      const midLat = (center.lat + edge.lat) / 2, midLng = (center.lng + edge.lng) / 2;
+      layers.push(L.marker([midLat, midLng], { interactive: false, icon: L.divIcon({
+        className: "compass-label",
+        html: `<span style="background:rgba(255,255,255,0.9);color:${color};font-weight:bold;font-size:12px;padding:2px 6px;border-radius:3px;white-space:nowrap;pointer-events:none">r = ${formatDist(r)}</span>`,
+        iconAnchor: [0, 12]
+      }) }).addTo(map));
+      const area = Math.PI * r * r;
+      const shortTxt = `r=${formatDist(r)} A=${formatArea(area)}`;
+      compassHistory.push({ layers, text: shortTxt, data: d });
+    } else if (d.type === "route") {
+      if (!Array.isArray(d.points) || d.points.length < 2) return;
+      const pts = d.points.map((p) => L.latLng(p[0], p[1]));
+      layers.push(L.polyline(pts, { color, weight: 4, opacity: 0.85 }).addTo(map));
+      routeHistory.push({ layers, text: formatRouteSummary(d), data: d });
+    }
+  }
+  function collectToolData() {
+    const all = [];
+    rulerHistory.forEach((e) => {
+      if (e.data) all.push(e.data);
+    });
+    protHistory.forEach((e) => {
+      if (e.data) all.push(e.data);
+    });
+    lineHistory.forEach((e) => {
+      if (e.data) all.push(e.data);
+    });
+    compassHistory.forEach((e) => {
+      if (e.data) all.push(e.data);
+    });
+    routeHistory.forEach((e) => {
+      if (e.data) all.push(e.data);
+    });
+    return all;
+  }
+  function clearAllTools() {
+    [rulerHistory, protHistory, lineHistory, compassHistory, routeHistory].forEach((arr) => {
+      arr.forEach((e) => e.layers.forEach((l) => {
+        try {
+          map.removeLayer(l);
+        } catch (x) {
+        }
+      }));
+      arr.length = 0;
+    });
+    renderAllToolHistories();
+  }
+  function loadToolData(dataArr) {
+    clearAllTools();
+    dataArr.forEach((d) => restoreToolEntry(d));
+    renderAllToolHistories();
+  }
+  function activateRuler() {
+    document.getElementById("rulerInfo").style.display = "block";
+    document.getElementById("rulerResult").textContent = "";
+    if (isTouch) {
+      const el = document.querySelector('#rulerInfo [data-i18n="tool.ruler.info"]');
+      if (el) el.textContent = t("tool.ruler.infoTouch");
+    }
+    map.getContainer().classList.add("ruler-cursor");
+    map.on("click", rulerClick);
+  }
+  function deactivateRuler() {
+    document.getElementById("rulerInfo").style.display = "none";
+    map.getContainer().classList.remove("ruler-cursor");
+    map.off("click", rulerClick);
+    resetRulerDraw();
+  }
+  function rulerClick(e) {
+    if (rulerPoints.length >= 2) resetRulerDraw();
+    const pt = snapToWaypoint(e.latlng);
+    rulerPoints.push(pt);
+    const color = TOOL_COLORS.ruler;
+    rulerMarkers.push(L.circleMarker(
+      pt,
+      { radius: 5, color, fillColor: color, fillOpacity: 1 }
+    ).addTo(map));
+    if (rulerPoints.length === 1) {
+      rulerTempLine = L.polyline([pt, pt], { color, weight: 2, dashArray: "6 4" }).addTo(map);
+      rulerMoveHandler = (ev) => {
+        const sp = snapToWaypoint(ev.latlng);
+        rulerTempLine.setLatLngs([rulerPoints[0], sp]);
+        const d = rulerPoints[0].distanceTo(sp);
+        if (rulerLiveDist) map.removeLayer(rulerLiveDist);
+        const mLat = (rulerPoints[0].lat + sp.lat) / 2;
+        const mLng = (rulerPoints[0].lng + sp.lng) / 2;
+        rulerLiveDist = L.marker([mLat, mLng], { interactive: false, icon: L.divIcon({
+          className: "ruler-label",
+          html: `<span style="background:rgba(255,255,255,0.85);color:#dc2626;font-weight:bold;font-size:12px;padding:1px 5px;border-radius:3px;white-space:nowrap;pointer-events:none">${formatDist(d)}</span>`,
+          iconAnchor: [0, 12]
+        }) }).addTo(map);
+        status(`${t("msg.distance")}: ${formatDist(d)} \u2014 ${t("msg.clickEndPoint")}`);
+      };
+      map.on("mousemove", rulerMoveHandler);
+    }
+    if (rulerPoints.length === 2) {
+      if (rulerTempLine) {
+        map.removeLayer(rulerTempLine);
+        rulerTempLine = null;
+      }
+      if (rulerMoveHandler) {
+        map.off("mousemove", rulerMoveHandler);
+        rulerMoveHandler = null;
+      }
+      if (rulerLiveDist) {
+        map.removeLayer(rulerLiveDist);
+        rulerLiveDist = null;
+      }
+      rulerLine = L.polyline(rulerPoints, { color, weight: 2.5 }).addTo(map);
+      const dist = rulerPoints[0].distanceTo(rulerPoints[1]);
+      const txt = formatDist(dist);
+      const midLat = (rulerPoints[0].lat + rulerPoints[1].lat) / 2;
+      const midLng = (rulerPoints[0].lng + rulerPoints[1].lng) / 2;
+      rulerLabel = L.marker([midLat, midLng], { interactive: false, icon: L.divIcon({
+        className: "ruler-label",
+        html: `<span style="background:rgba(255,255,255,0.9);color:#dc2626;font-weight:bold;font-size:12px;padding:2px 6px;border-radius:3px;white-space:nowrap;pointer-events:none">${txt}</span>`,
+        iconAnchor: [0, 12]
+      }) }).addTo(map);
+      document.getElementById("rulerResult").textContent = txt;
+      status(`${t("msg.measuredDistance")}: ${txt}`);
+      rulerHistory.push({
+        layers: [...rulerMarkers, rulerLine, rulerLabel],
+        text: txt,
+        data: { type: "ruler", points: rulerPoints.map((p) => [p.lat, p.lng]) }
+      });
+      rulerMarkers = [];
+      rulerLine = null;
+      rulerLabel = null;
+      rulerPoints = [];
+      renderToolHistory("ruler", rulerHistory, TOOL_COLORS.ruler);
+    }
+  }
+  function resetRulerDraw() {
+    rulerMarkers.forEach((m) => map.removeLayer(m));
+    rulerMarkers = [];
+    rulerPoints = [];
+    if (rulerLine) {
+      map.removeLayer(rulerLine);
+      rulerLine = null;
+    }
+    if (rulerTempLine) {
+      map.removeLayer(rulerTempLine);
+      rulerTempLine = null;
+    }
+    if (rulerMoveHandler) {
+      map.off("mousemove", rulerMoveHandler);
+      rulerMoveHandler = null;
+    }
+    if (rulerLabel) {
+      map.removeLayer(rulerLabel);
+      rulerLabel = null;
+    }
+    if (rulerLiveDist) {
+      map.removeLayer(rulerLiveDist);
+      rulerLiveDist = null;
+    }
+    document.getElementById("rulerResult").textContent = "";
+  }
+  function activateProtractor() {
+    document.getElementById("protractorInfo").style.display = "block";
+    document.getElementById("protractorResult").textContent = "";
+    if (isTouch) {
+      const el = document.querySelector('#protractorInfo [data-i18n="tool.protractor.info"]');
+      if (el) el.textContent = t("tool.protractor.infoTouch");
+    }
+    map.getContainer().classList.add("ruler-cursor");
+    map.on("click", protractorClick);
+  }
+  function deactivateProtractor() {
+    document.getElementById("protractorInfo").style.display = "none";
+    map.getContainer().classList.remove("ruler-cursor");
+    map.off("click", protractorClick);
+    resetProtDraw();
+  }
+  function protractorClick(e) {
+    if (protPoints.length >= 3) resetProtDraw();
+    const pt = snapToWaypoint(e.latlng);
+    protPoints.push(pt);
+    const color = TOOL_COLORS.protractor;
+    protMarkers.push(L.circleMarker(
+      pt,
+      { radius: 5, color, fillColor: color, fillOpacity: 1 }
+    ).addTo(map));
+    if (protPoints.length === 1) {
+      protTempLine = L.polyline([pt, pt], { color, weight: 2, dashArray: "6 4" }).addTo(map);
+      protMoveHandler = (ev) => {
+        const sp = snapToWaypoint(ev.latlng);
+        protTempLine.setLatLngs([protPoints[0], sp]);
+        status(t("msg.protClickVertex"));
+      };
+      map.on("mousemove", protMoveHandler);
+    }
+    if (protPoints.length === 2) {
+      if (protTempLine) {
+        map.removeLayer(protTempLine);
+        protTempLine = null;
+      }
+      if (protMoveHandler) {
+        map.off("mousemove", protMoveHandler);
+        protMoveHandler = null;
+      }
+      protLines.push(L.polyline([protPoints[0], protPoints[1]], { color, weight: 2.5 }).addTo(map));
+      protTempLine = L.polyline(
+        [protPoints[1], protPoints[1]],
+        { color, weight: 2, dashArray: "6 4" }
+      ).addTo(map);
+      protMoveHandler = (ev) => {
+        const sp = snapToWaypoint(ev.latlng);
+        protTempLine.setLatLngs([protPoints[1], sp]);
+        const angle = computeAngle(protPoints[0], protPoints[1], sp);
+        if (protLabel) map.removeLayer(protLabel);
+        protLabel = L.marker(
+          [protPoints[1].lat, protPoints[1].lng],
+          { interactive: false, icon: L.divIcon({
+            className: "prot-label",
+            html: `<span style="background:rgba(255,255,255,0.85);color:#7c3aed;font-weight:bold;font-size:12px;padding:1px 5px;border-radius:3px;white-space:nowrap;pointer-events:none">${angle.toFixed(1)}\xB0</span>`,
+            iconAnchor: [-8, 12]
+          }) }
+        ).addTo(map);
+        status(`${t("msg.angle")}: ${angle.toFixed(1)}\xB0 \u2014 ${t("msg.clickToFix")}`);
+      };
+      map.on("mousemove", protMoveHandler);
+    }
+    if (protPoints.length === 3) {
+      if (protTempLine) {
+        map.removeLayer(protTempLine);
+        protTempLine = null;
+      }
+      if (protMoveHandler) {
+        map.off("mousemove", protMoveHandler);
+        protMoveHandler = null;
+      }
+      protLines.push(L.polyline([protPoints[1], protPoints[2]], { color, weight: 2.5 }).addTo(map));
+      const angle = computeAngle(protPoints[0], protPoints[1], protPoints[2]);
+      protArc = drawAngleArc(protPoints[1], protPoints[0], protPoints[2], angle, color);
+      const txt = `${angle.toFixed(1)}\xB0`;
+      document.getElementById("protractorResult").textContent = txt;
+      const d1 = protPoints[1].distanceTo(protPoints[0]);
+      const d2 = protPoints[1].distanceTo(protPoints[2]);
+      if (protLabel) map.removeLayer(protLabel);
+      protLabel = L.marker(
+        [protPoints[1].lat, protPoints[1].lng],
+        { interactive: false, icon: L.divIcon({
+          className: "prot-label",
+          html: `<span style="background:rgba(255,255,255,0.9);color:#7c3aed;font-weight:bold;font-size:12px;padding:2px 6px;border-radius:3px;white-space:nowrap;pointer-events:none">${txt}</span>`,
+          iconAnchor: [-8, 12]
+        }) }
+      ).addTo(map);
+      const mid1Lat = (protPoints[0].lat + protPoints[1].lat) / 2;
+      const mid1Lng = (protPoints[0].lng + protPoints[1].lng) / 2;
+      protArm1Label = L.marker([mid1Lat, mid1Lng], { interactive: false, icon: L.divIcon({
+        className: "prot-label",
+        html: `<span style="background:rgba(255,255,255,0.9);color:#7c3aed;font-weight:bold;font-size:11px;padding:1px 5px;border-radius:3px;white-space:nowrap;pointer-events:none">${formatDist(d1)}</span>`,
+        iconAnchor: [0, 12]
+      }) }).addTo(map);
+      const mid2Lat = (protPoints[1].lat + protPoints[2].lat) / 2;
+      const mid2Lng = (protPoints[1].lng + protPoints[2].lng) / 2;
+      protArm2Label = L.marker([mid2Lat, mid2Lng], { interactive: false, icon: L.divIcon({
+        className: "prot-label",
+        html: `<span style="background:rgba(255,255,255,0.9);color:#7c3aed;font-weight:bold;font-size:11px;padding:1px 5px;border-radius:3px;white-space:nowrap;pointer-events:none">${formatDist(d2)}</span>`,
+        iconAnchor: [0, 12]
+      }) }).addTo(map);
+      status(`${t("msg.measuredAngle")}: ${txt}  |  ${t("msg.arm")} 1: ${formatDist(d1)}  |  ${t("msg.arm")} 2: ${formatDist(d2)}`);
+      const allLayers = [...protMarkers, ...protLines];
+      if (protArc) allLayers.push(protArc);
+      if (protLabel) allLayers.push(protLabel);
+      if (protArm1Label) allLayers.push(protArm1Label);
+      if (protArm2Label) allLayers.push(protArm2Label);
+      protHistory.push({
+        layers: allLayers,
+        text: `${txt} (${formatDist(d1)} / ${formatDist(d2)})`,
+        data: { type: "protractor", points: protPoints.map((p) => [p.lat, p.lng]) }
+      });
+      protMarkers = [];
+      protLines = [];
+      protArc = null;
+      protLabel = null;
+      protArm1Label = null;
+      protArm2Label = null;
+      protPoints = [];
+      renderToolHistory("protractor", protHistory, TOOL_COLORS.protractor);
+    }
+  }
+  function resetProtDraw() {
+    protMarkers.forEach((m) => map.removeLayer(m));
+    protMarkers = [];
+    protLines.forEach((l) => map.removeLayer(l));
+    protLines = [];
+    if (protArc) {
+      map.removeLayer(protArc);
+      protArc = null;
+    }
+    if (protLabel) {
+      map.removeLayer(protLabel);
+      protLabel = null;
+    }
+    if (protArm1Label) {
+      map.removeLayer(protArm1Label);
+      protArm1Label = null;
+    }
+    if (protArm2Label) {
+      map.removeLayer(protArm2Label);
+      protArm2Label = null;
+    }
+    if (protTempLine) {
+      map.removeLayer(protTempLine);
+      protTempLine = null;
+    }
+    if (protMoveHandler) {
+      map.off("mousemove", protMoveHandler);
+      protMoveHandler = null;
+    }
+    protPoints = [];
+    document.getElementById("protractorResult").textContent = "";
+  }
+  function activateLine() {
+    if (linePoints.length >= 2) {
+      lineFinish();
+      return;
+    }
+    document.getElementById("lineInfo").style.display = "block";
+    document.getElementById("lineResult").textContent = "";
+    if (isTouch) {
+      const el = document.querySelector('#lineInfo [data-i18n="tool.line.info"]');
+      if (el) el.textContent = t("tool.line.infoTouch");
+    }
+    map.getContainer().classList.add("ruler-cursor");
+    map.on("click", lineClick);
+    map.on("dblclick", lineFinish);
+    map.on("contextmenu", lineFinishRight);
+  }
+  function deactivateLine() {
+    if (linePoints.length >= 2) lineFinish();
+    document.getElementById("lineInfo").style.display = "none";
+    map.getContainer().classList.remove("ruler-cursor");
+    map.off("click", lineClick);
+    map.off("dblclick", lineFinish);
+    map.off("contextmenu", lineFinishRight);
+    resetLineDraw();
+  }
+  function lineClick(e) {
+    const color = TOOL_COLORS.line;
+    const pt = snapToWaypoint(e.latlng);
+    linePoints.push(pt);
+    lineMarkers.push(L.circleMarker(
+      pt,
+      { radius: 4, color, fillColor: color, fillOpacity: 1 }
+    ).addTo(map));
+    if (linePoints.length > 1) {
+      const prev = linePoints[linePoints.length - 2];
+      lineSegments.push(L.polyline([prev, pt], { color, weight: 2.5 }).addTo(map));
+      const segDist = prev.distanceTo(pt);
+      const midLat = (prev.lat + pt.lat) / 2;
+      const midLng = (prev.lng + pt.lng) / 2;
+      lineSegLabels.push(L.marker(
+        [midLat, midLng],
+        { interactive: false, icon: L.divIcon({
+          className: "line-label",
+          html: `<span style="background:rgba(255,255,255,0.9);color:#0891b2;font-weight:bold;font-size:11px;padding:1px 5px;border-radius:3px;white-space:nowrap;pointer-events:none">${formatDist(segDist)}</span>`,
+          iconAnchor: [0, 12]
+        }) }
+      ).addTo(map));
+      if (lineTempLine) {
+        map.removeLayer(lineTempLine);
+        lineTempLine = null;
+      }
+      if (lineMoveHandler) {
+        map.off("mousemove", lineMoveHandler);
+        lineMoveHandler = null;
+      }
+    }
+    lineTempLine = L.polyline([pt, pt], { color, weight: 2, dashArray: "6 4" }).addTo(map);
+    lineMoveHandler = (ev) => {
+      const sp = snapToWaypoint(ev.latlng);
+      lineTempLine.setLatLngs([linePoints[linePoints.length - 1], sp]);
+      const segDist = linePoints[linePoints.length - 1].distanceTo(sp);
+      const totalDist = lineTotalDist() + segDist;
+      if (lineLiveDist) map.removeLayer(lineLiveDist);
+      const mLat = (linePoints[linePoints.length - 1].lat + sp.lat) / 2;
+      const mLng = (linePoints[linePoints.length - 1].lng + sp.lng) / 2;
+      lineLiveDist = L.marker([mLat, mLng], { interactive: false, icon: L.divIcon({
+        className: "line-label",
+        html: `<span style="background:rgba(255,255,255,0.85);color:#0891b2;font-weight:bold;font-size:11px;padding:1px 5px;border-radius:3px;white-space:nowrap;pointer-events:none">${formatDist(segDist)}</span>`,
+        iconAnchor: [0, 12]
+      }) }).addTo(map);
+      let info = `${t("msg.segment")}: ${formatDist(segDist)} | ${t("msg.total")}: ${formatDist(totalDist)}`;
+      if (linePoints.length >= 2) {
+        const prev = linePoints[linePoints.length - 2];
+        const cur = linePoints[linePoints.length - 1];
+        const angle = computeAngle(prev, cur, sp);
+        info += ` | ${t("msg.angle")}: ${angle.toFixed(1)}\xB0`;
+      }
+      info += ` \u2014 ${t("msg.rightClickFinish")}`;
+      status(info);
+    };
+    map.on("mousemove", lineMoveHandler);
+    updateLineResult();
+    updateLineUndoBtn();
+    updateMobileToolBar();
+  }
+  function lineFinishRight(e) {
+    if (e && e.originalEvent) e.originalEvent.preventDefault();
+    lineFinish();
+  }
+  function lineFinish() {
+    if (lineTempLine) {
+      map.removeLayer(lineTempLine);
+      lineTempLine = null;
+    }
+    if (lineMoveHandler) {
+      map.off("mousemove", lineMoveHandler);
+      lineMoveHandler = null;
+    }
+    if (lineLiveDist) {
+      map.removeLayer(lineLiveDist);
+      lineLiveDist = null;
+    }
+    if (linePoints.length >= 2) {
+      const txt = `${linePoints.length} pt \u2014 ${formatDist(lineTotalDist())}`;
+      updateLineResult();
+      status(`${t("msg.trackComplete")}: ${linePoints.length} ${t("msg.points")}, ${formatDist(lineTotalDist())}`);
+      lineHistory.push({
+        layers: [...lineMarkers, ...lineSegments, ...lineSegLabels],
+        text: txt,
+        data: { type: "line", points: linePoints.map((p) => [p.lat, p.lng]) }
+      });
+      lineMarkers = [];
+      lineSegments = [];
+      lineSegLabels = [];
+      linePoints = [];
+      renderToolHistory("line", lineHistory, TOOL_COLORS.line);
+    }
+    updateMobileToolBar();
+  }
+  function lineTotalDist() {
+    let total = 0;
+    for (let i = 1; i < linePoints.length; i++) total += linePoints[i - 1].distanceTo(linePoints[i]);
+    return total;
+  }
+  function updateLineResult() {
+    const el = document.getElementById("lineResult");
+    if (linePoints.length < 2) {
+      el.textContent = "";
+      return;
+    }
+    let txt = `${linePoints.length} ${t("msg.points")} \u2014 ${t("msg.total")}: ${formatDist(lineTotalDist())}`;
+    const parts = [];
+    for (let i = 1; i < linePoints.length; i++) {
+      parts.push(formatDist(linePoints[i - 1].distanceTo(linePoints[i])));
+    }
+    txt += `
+${t("msg.segments")}: ${parts.join(" \u2192 ")}`;
+    if (linePoints.length >= 3) {
+      const angles = [];
+      for (let i = 1; i < linePoints.length - 1; i++) {
+        angles.push(
+          computeAngle(linePoints[i - 1], linePoints[i], linePoints[i + 1]).toFixed(1) + "\xB0"
+        );
+      }
+      txt += `
+${t("msg.angles")}: ${angles.join(", ")}`;
+    }
+    el.textContent = txt;
+  }
+  function updateLineUndoBtn() {
+    const btn = document.getElementById("btnLineUndo");
+    if (!btn) return;
+    btn.style.display = linePoints.length || lineHistory.length ? "" : "none";
+  }
+  function lineUndo() {
+    if (linePoints.length) {
+      linePoints.pop();
+      if (lineMarkers.length) map.removeLayer(lineMarkers.pop());
+      if (lineSegments.length) map.removeLayer(lineSegments.pop());
+      if (lineSegLabels.length) map.removeLayer(lineSegLabels.pop());
+      if (lineTempLine) {
+        map.removeLayer(lineTempLine);
+        lineTempLine = null;
+      }
+      if (lineMoveHandler) {
+        map.off("mousemove", lineMoveHandler);
+        lineMoveHandler = null;
+      }
+      if (lineLiveDist) {
+        map.removeLayer(lineLiveDist);
+        lineLiveDist = null;
+      }
+      if (linePoints.length) {
+        const color = TOOL_COLORS.line;
+        const lastPt = linePoints[linePoints.length - 1];
+        lineTempLine = L.polyline(
+          [lastPt, lastPt],
+          { color, weight: 2, dashArray: "6 4" }
+        ).addTo(map);
+        lineMoveHandler = (ev) => {
+          const sp = snapToWaypoint(ev.latlng);
+          lineTempLine.setLatLngs([linePoints[linePoints.length - 1], sp]);
+          const segDist = linePoints[linePoints.length - 1].distanceTo(sp);
+          const totalDist = lineTotalDist() + segDist;
+          if (lineLiveDist) map.removeLayer(lineLiveDist);
+          const mLat = (linePoints[linePoints.length - 1].lat + sp.lat) / 2;
+          const mLng = (linePoints[linePoints.length - 1].lng + sp.lng) / 2;
+          lineLiveDist = L.marker([mLat, mLng], { interactive: false, icon: L.divIcon({
+            className: "line-label",
+            html: `<span style="background:rgba(255,255,255,0.85);color:#0891b2;font-weight:bold;font-size:11px;padding:1px 5px;border-radius:3px;white-space:nowrap;pointer-events:none">${formatDist(segDist)}</span>`,
+            iconAnchor: [0, 12]
+          }) }).addTo(map);
+          let info = `${t("msg.segment")}: ${formatDist(segDist)} | ${t("msg.total")}: ${formatDist(totalDist)}`;
+          if (linePoints.length >= 2) {
+            const prev = linePoints[linePoints.length - 2];
+            const cur = linePoints[linePoints.length - 1];
+            const angle = computeAngle(prev, cur, sp);
+            info += ` | ${t("msg.angle")}: ${angle.toFixed(1)}\xB0`;
+          }
+          info += ` \u2014 ${t("msg.rightClickFinish")}`;
+          status(info);
+        };
+        map.on("mousemove", lineMoveHandler);
+      }
+      updateLineResult();
+    } else if (lineHistory.length) {
+      const last = lineHistory.pop();
+      last.layers.forEach((l) => {
+        try {
+          map.removeLayer(l);
+        } catch (e) {
+        }
+      });
+      const pts = last.data.points;
+      pts.pop();
+      if (pts.length >= 2) {
+        const color = TOOL_COLORS.line;
+        const markers = [], segs = [], labels = [];
+        for (let i = 0; i < pts.length; i++) {
+          markers.push(L.circleMarker(
+            pts[i],
+            { radius: 4, color, fillColor: color, fillOpacity: 1 }
+          ).addTo(map));
+          if (i > 0) {
+            segs.push(L.polyline(
+              [pts[i - 1], pts[i]],
+              { color, weight: 2.5 }
+            ).addTo(map));
+            const d = L.latLng(pts[i - 1]).distanceTo(L.latLng(pts[i]));
+            const mLat = (pts[i - 1][0] + pts[i][0]) / 2;
+            const mLng = (pts[i - 1][1] + pts[i][1]) / 2;
+            labels.push(L.marker([mLat, mLng], { interactive: false, icon: L.divIcon({
+              className: "line-label",
+              html: `<span style="background:rgba(255,255,255,0.9);color:#0891b2;font-weight:bold;font-size:11px;padding:1px 5px;border-radius:3px;white-space:nowrap;pointer-events:none">${formatDist(d)}</span>`,
+              iconAnchor: [0, 12]
+            }) }).addTo(map));
+          }
+        }
+        let total = 0;
+        for (let i = 1; i < pts.length; i++) {
+          total += L.latLng(pts[i - 1]).distanceTo(L.latLng(pts[i]));
+        }
+        const txt = `${pts.length} pt \u2014 ${formatDist(total)}`;
+        lineHistory.push({
+          layers: [...markers, ...segs, ...labels],
+          text: txt,
+          data: { type: "line", points: pts }
+        });
+      }
+      renderToolHistory("line", lineHistory, TOOL_COLORS.line);
+    }
+    updateLineUndoBtn();
+    updateMobileToolBar();
+  }
+  function resetLineDraw() {
+    lineMarkers.forEach((m) => map.removeLayer(m));
+    lineMarkers = [];
+    lineSegments.forEach((s) => map.removeLayer(s));
+    lineSegments = [];
+    lineSegLabels.forEach((l) => map.removeLayer(l));
+    lineSegLabels = [];
+    if (lineTempLine) {
+      map.removeLayer(lineTempLine);
+      lineTempLine = null;
+    }
+    if (lineMoveHandler) {
+      map.off("mousemove", lineMoveHandler);
+      lineMoveHandler = null;
+    }
+    if (lineLiveDist) {
+      map.removeLayer(lineLiveDist);
+      lineLiveDist = null;
+    }
+    linePoints = [];
+    document.getElementById("lineResult").textContent = "";
+  }
+  function activateCompass() {
+    document.getElementById("compassInfo").style.display = "block";
+    document.getElementById("compassResult").textContent = "";
+    if (isTouch) {
+      const el = document.querySelector('#compassInfo [data-i18n="tool.compass.info"]');
+      if (el) el.textContent = t("tool.compass.infoTouch");
+    }
+    compassFixed = false;
+    map.getContainer().classList.add("ruler-cursor");
+    map.on("click", compassClick);
+  }
+  function deactivateCompass() {
+    document.getElementById("compassInfo").style.display = "none";
+    map.getContainer().classList.remove("ruler-cursor");
+    map.off("click", compassClick);
+    resetCompassDraw();
+  }
+  function compassClick(e) {
+    const color = TOOL_COLORS.compass;
+    if (!compassCenter) {
+      const pt = snapToWaypoint(e.latlng);
+      compassCenter = pt;
+      compassCenterMarker = L.circleMarker(
+        pt,
+        { radius: 5, color, fillColor: color, fillOpacity: 1 }
+      ).addTo(map);
+      compassMoveHandler = (ev) => {
+        const sp = snapToWaypoint(ev.latlng);
+        const r = compassCenter.distanceTo(sp);
+        if (compassCircle) map.removeLayer(compassCircle);
+        if (compassRadiusLine) map.removeLayer(compassRadiusLine);
+        if (compassRadiusLabel) map.removeLayer(compassRadiusLabel);
+        compassCircle = L.circle(compassCenter, {
+          radius: r,
+          color,
+          weight: 2,
+          fill: true,
+          fillColor: color,
+          fillOpacity: 0.08
+        }).addTo(map);
+        compassRadiusLine = L.polyline(
+          [compassCenter, sp],
+          { color, weight: 2, dashArray: "6 4" }
+        ).addTo(map);
+        const midLat = (compassCenter.lat + sp.lat) / 2;
+        const midLng = (compassCenter.lng + sp.lng) / 2;
+        compassRadiusLabel = L.marker(
+          [midLat, midLng],
+          { interactive: false, icon: L.divIcon({
+            className: "compass-label",
+            html: `<span style="background:rgba(255,255,255,0.85);color:#ea580c;font-weight:bold;font-size:12px;padding:1px 5px;border-radius:3px;white-space:nowrap;pointer-events:none">r = ${formatDist(r)}</span>`,
+            iconAnchor: [0, 12]
+          }) }
+        ).addTo(map);
+        const area = Math.PI * r * r;
+        const circumf = 2 * Math.PI * r;
+        status(`${t("msg.radius")}: ${formatDist(r)} | ${t("msg.diameter")}: ${formatDist(r * 2)} | ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatArea(area)}`);
+      };
+      map.on("mousemove", compassMoveHandler);
+    } else {
+      const pt = snapToWaypoint(e.latlng);
+      if (compassMoveHandler) {
+        map.off("mousemove", compassMoveHandler);
+        compassMoveHandler = null;
+      }
+      const r = compassCenter.distanceTo(pt);
+      if (compassCircle) map.removeLayer(compassCircle);
+      if (compassRadiusLine) map.removeLayer(compassRadiusLine);
+      compassCircle = L.circle(compassCenter, {
+        radius: r,
+        color,
+        weight: 2.5,
+        fill: true,
+        fillColor: color,
+        fillOpacity: 0.08
+      }).addTo(map);
+      compassRadiusLine = L.polyline([compassCenter, pt], { color, weight: 2 }).addTo(map);
+      const edgeMarker = L.circleMarker(
+        pt,
+        { radius: 4, color, fillColor: color, fillOpacity: 1 }
+      ).addTo(map);
+      const area = Math.PI * r * r;
+      const circumf = 2 * Math.PI * r;
+      if (compassRadiusLabel) map.removeLayer(compassRadiusLabel);
+      const midLat = (compassCenter.lat + pt.lat) / 2;
+      const midLng = (compassCenter.lng + pt.lng) / 2;
+      compassRadiusLabel = L.marker(
+        [midLat, midLng],
+        { interactive: false, icon: L.divIcon({
+          className: "compass-label",
+          html: `<span style="background:rgba(255,255,255,0.9);color:#ea580c;font-weight:bold;font-size:12px;padding:2px 6px;border-radius:3px;white-space:nowrap;pointer-events:none">r = ${formatDist(r)}</span>`,
+          iconAnchor: [0, 12]
+        }) }
+      ).addTo(map);
+      const topLat = compassCenter.lat + r / 111320;
+      compassCircumfLabel = L.marker(
+        [topLat, compassCenter.lng],
+        { interactive: false, icon: L.divIcon({
+          className: "compass-label",
+          html: `<span style="background:rgba(255,255,255,0.9);color:#ea580c;font-weight:bold;font-size:12px;padding:2px 6px;border-radius:3px;white-space:nowrap;pointer-events:none">C = ${formatDist(circumf)}</span>`,
+          iconAnchor: [30, 24]
+        }) }
+      ).addTo(map);
+      compassAreaLabel = L.marker(
+        [compassCenter.lat, compassCenter.lng],
+        { interactive: false, icon: L.divIcon({
+          className: "compass-label",
+          html: `<span style="background:rgba(255,255,255,0.9);color:#ea580c;font-weight:bold;font-size:11px;padding:2px 6px;border-radius:3px;white-space:nowrap;pointer-events:none">A = ${formatArea(area)}</span>`,
+          iconAnchor: [30, 6]
+        }) }
+      ).addTo(map);
+      const shortTxt = `r=${formatDist(r)} A=${formatArea(area)}`;
+      const fullTxt = `${t("msg.radius")}: ${formatDist(r)} | ${t("msg.diameter")}: ${formatDist(r * 2)}
+${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatArea(area)}`;
+      document.getElementById("compassResult").textContent = fullTxt;
+      status(`${t("msg.circleFixed")} \u2014 ${fullTxt.replace(/\n/g, " | ")}`);
+      const layers = [
+        compassCenterMarker,
+        compassCircle,
+        compassRadiusLine,
+        compassRadiusLabel,
+        compassCircumfLabel,
+        compassAreaLabel,
+        edgeMarker
+      ].filter(Boolean);
+      compassHistory.push({
+        layers,
+        text: shortTxt,
+        data: { type: "compass", center: [compassCenter.lat, compassCenter.lng], edge: [pt.lat, pt.lng] }
+      });
+      compassCenterMarker = null;
+      compassCircle = null;
+      compassRadiusLine = null;
+      compassRadiusLabel = null;
+      compassCircumfLabel = null;
+      compassAreaLabel = null;
+      compassCenter = null;
+      compassFixed = false;
+      renderToolHistory("compass", compassHistory, TOOL_COLORS.compass);
+    }
+  }
+  function resetCompassDraw() {
+    if (compassCenterMarker) {
+      map.removeLayer(compassCenterMarker);
+      compassCenterMarker = null;
+    }
+    if (compassCircle) {
+      map.removeLayer(compassCircle);
+      compassCircle = null;
+    }
+    if (compassRadiusLine) {
+      map.removeLayer(compassRadiusLine);
+      compassRadiusLine = null;
+    }
+    if (compassMoveHandler) {
+      map.off("mousemove", compassMoveHandler);
+      compassMoveHandler = null;
+    }
+    if (compassRadiusLabel) {
+      map.removeLayer(compassRadiusLabel);
+      compassRadiusLabel = null;
+    }
+    if (compassCircumfLabel) {
+      map.removeLayer(compassCircumfLabel);
+      compassCircumfLabel = null;
+    }
+    if (compassAreaLabel) {
+      map.removeLayer(compassAreaLabel);
+      compassAreaLabel = null;
+    }
+    compassCenter = null;
+    compassFixed = false;
+    document.getElementById("compassResult").textContent = "";
+  }
+  function toggleTool(name) {
+    if (state.activeTool === name) {
+      deactivateAllTools();
+      return;
+    }
+    deactivateAllTools();
+    state.activeTool = name;
+    const tool = TOOL_TABLE[name];
+    if (tool) {
+      tool.btn.classList.add("active");
+      tool.activate();
+    }
+    renderWaypointMarkers();
+    map.doubleClickZoom.disable();
+    if (window.innerWidth <= 768 || isTouch) {
+      closeSidebarMobile();
+      showMobileToolBar();
+      updateMobileToolBar();
+    }
+  }
+  function deactivateAllTools() {
+    if (state.activeTool && TOOL_TABLE[state.activeTool]) {
+      TOOL_TABLE[state.activeTool].deactivate();
+    }
+    state.activeTool = null;
+    for (const k of Object.keys(TOOL_TABLE)) TOOL_TABLE[k].btn.classList.remove("active");
+    renderWaypointMarkers();
+    if (state.wpMapActive) deactivateWaypoint();
+    map.doubleClickZoom.enable();
+    hideMobileToolBar();
+  }
+  function updateMobileToolBar() {
+    if (!$mobileToolBar.classList.contains("visible")) return;
+    const doneLabel = $mtbDone.querySelector("span");
+    if (doneLabel) {
+      const key = state.activeTool === "route" ? "btn.calculate" : "btn.done";
+      doneLabel.dataset.i18n = key;
+      doneLabel.textContent = t(key);
+    }
+    $mtbDone.style.display = state.activeTool === "line" && linePoints.length >= 2 || state.activeTool === "route" ? "" : "none";
+    $mtbUndo.style.display = state.activeTool === "line" && (linePoints.length > 0 || lineHistory.length > 0) || state.activeTool === "route" ? "" : "none";
+  }
+  var rulerPoints, rulerMarkers, rulerLine, rulerMoveHandler, rulerTempLine, rulerLabel, rulerLiveDist, protPoints, protMarkers, protLines, protArc, protLabel, protArm1Label, protArm2Label, protMoveHandler, protTempLine, linePoints, lineMarkers, lineSegments, lineSegLabels, lineMoveHandler, lineTempLine, lineLiveDist, compassCenter, compassCenterMarker, compassCircle, compassRadiusLine, compassMoveHandler, compassFixed, compassRadiusLabel, compassCircumfLabel, compassAreaLabel, TOOL_TABLE;
+  var init_tools = __esm({
+    "cartograpy/static/src/tools.js"() {
+      init_core();
+      init_state();
+      init_i18n();
+      init_waypoints();
+      init_snap();
+      init_route();
+      rulerPoints = [];
+      rulerMarkers = [];
+      rulerLine = null;
+      rulerMoveHandler = null;
+      rulerTempLine = null;
+      rulerLabel = null;
+      rulerLiveDist = null;
+      protPoints = [];
+      protMarkers = [];
+      protLines = [];
+      protArc = null;
+      protLabel = null;
+      protArm1Label = null;
+      protArm2Label = null;
+      protMoveHandler = null;
+      protTempLine = null;
+      linePoints = [];
+      lineMarkers = [];
+      lineSegments = [];
+      lineSegLabels = [];
+      lineMoveHandler = null;
+      lineTempLine = null;
+      lineLiveDist = null;
+      compassCenter = null;
+      compassCenterMarker = null;
+      compassCircle = null;
+      compassRadiusLine = null;
+      compassMoveHandler = null;
+      compassFixed = false;
+      compassRadiusLabel = null;
+      compassCircumfLabel = null;
+      compassAreaLabel = null;
+      TOOL_TABLE = {
+        ruler: { btn: $btnRuler, activate: activateRuler, deactivate: deactivateRuler },
+        protractor: { btn: $btnProtractor, activate: activateProtractor, deactivate: deactivateProtractor },
+        line: { btn: $btnLine, activate: activateLine, deactivate: deactivateLine },
+        compass: { btn: $btnCompass, activate: activateCompass, deactivate: deactivateCompass },
+        route: { btn: $btnRoute, activate: activateRoute, deactivate: deactivateRoute }
+      };
+      setRouteHistoryRenderer(() => renderToolHistory("route", routeHistory, TOOL_COLORS.route));
+    }
+  });
+
+  // cartograpy/static/src/main.js
+  init_core();
+  init_state();
+  init_i18n();
+
+  // cartograpy/static/src/search.js
+  init_core();
+  init_state();
+  init_i18n();
+
+  // cartograpy/static/src/config.js
+  init_core();
+  init_state();
+  init_i18n();
+
+  // cartograpy/static/src/overlays.js
+  init_core();
+  init_state();
+  init_i18n();
 
   // cartograpy/static/src/weather.js
+  init_core();
+  init_state();
+  init_i18n();
   var $weatherCard = document.getElementById("weatherCard");
   var $weatherDate = document.getElementById("weatherDate");
   var $weatherIcon = document.getElementById("weatherIcon");
@@ -1027,1031 +2581,8 @@
     if (!anyDisabled) _setOverlayMsg("");
   }
 
-  // cartograpy/static/src/tools.js
-  function formatDist(m) {
-    if (m >= 1e3) return (m / 1e3).toFixed(2) + " km";
-    return m.toFixed(1) + " m";
-  }
-  function formatArea(m2) {
-    if (m2 >= 1e6) return (m2 / 1e6).toFixed(3) + " km\xB2";
-    if (m2 >= 1e4) return (m2 / 1e4).toFixed(2) + " ha";
-    return m2.toFixed(1) + " m\xB2";
-  }
-  function bearing(a, b) {
-    const dLon = (b.lng - a.lng) * Math.PI / 180;
-    const lat1 = a.lat * Math.PI / 180, lat2 = b.lat * Math.PI / 180;
-    const y = Math.sin(dLon) * Math.cos(lat2);
-    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
-    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-  }
-  function computeAngle(a, vertex, b) {
-    const b1 = bearing(vertex, a);
-    const b2 = bearing(vertex, b);
-    let angle = Math.abs(b2 - b1);
-    if (angle > 180) angle = 360 - angle;
-    return angle;
-  }
-  function drawAngleArc(vertex, p1, p2, angleDeg, color) {
-    const r = Math.min(vertex.distanceTo(p1), vertex.distanceTo(p2), 5e4) * 0.25;
-    const b1 = bearing(vertex, p1);
-    const b2 = bearing(vertex, p2);
-    let start = b1, end = b2;
-    let diff = (end - start + 360) % 360;
-    if (diff > 180) {
-      start = b2;
-      diff = 360 - diff;
-    }
-    const pts = [];
-    const steps = Math.max(20, Math.round(diff));
-    for (let i = 0; i <= steps; i++) {
-      const a = (start + diff * i / steps) * Math.PI / 180;
-      const dLat = r * Math.cos(a) / 111320;
-      const dLon = r * Math.sin(a) / (111320 * Math.cos(vertex.lat * Math.PI / 180));
-      pts.push([vertex.lat + dLat, vertex.lng + dLon]);
-    }
-    return L.polyline(pts, { color, weight: 2, dashArray: "4 3" }).addTo(map);
-  }
-  function snapToWaypoint(latlng) {
-    if (!document.getElementById("chkSnapWp").checked || waypoints.length === 0) return latlng;
-    const pt = map.latLngToContainerPoint(latlng);
-    let best = null, bestDist = Infinity;
-    waypoints.forEach((wp) => {
-      const wp_pt = map.latLngToContainerPoint(L.latLng(wp.lat, wp.lng));
-      const d = pt.distanceTo(wp_pt);
-      if (d < bestDist) {
-        bestDist = d;
-        best = wp;
-      }
-    });
-    if (best && bestDist <= SNAP_PX) return L.latLng(best.lat, best.lng);
-    return latlng;
-  }
-  function renderToolHistory(toolName, histArr, color) {
-    const container = document.getElementById(toolName + "History");
-    container.innerHTML = "";
-    histArr.forEach((entry, i) => {
-      const row = document.createElement("div");
-      row.className = "tool-hist-row";
-      row.style.color = color;
-      const txt = document.createElement("span");
-      txt.className = "tool-hist-text";
-      txt.textContent = `#${i + 1}  ${entry.text}`;
-      txt.title = t("msg.clickToCenter");
-      txt.addEventListener("click", () => {
-        const fg = L.featureGroup(entry.layers);
-        try {
-          map.fitBounds(fg.getBounds().pad(0.2));
-        } catch (e) {
-        }
-      });
-      const del = document.createElement("span");
-      del.className = "tool-hist-del";
-      del.innerHTML = '<i class="fa-solid fa-xmark"></i>';
-      del.title = t("msg.delete");
-      del.addEventListener("click", () => {
-        entry.layers.forEach((l) => {
-          try {
-            map.removeLayer(l);
-          } catch (e) {
-          }
-        });
-        histArr.splice(i, 1);
-        renderToolHistory(toolName, histArr, color);
-      });
-      row.appendChild(txt);
-      row.appendChild(del);
-      container.appendChild(row);
-    });
-    const sep = document.getElementById("toolHistorySep");
-    const hasAny = rulerHistory.length || protHistory.length || lineHistory.length || compassHistory.length;
-    sep.style.display = hasAny ? "" : "none";
-    updateLineUndoBtn();
-  }
-  function renderAllToolHistories() {
-    renderToolHistory("ruler", rulerHistory, TOOL_COLORS.ruler);
-    renderToolHistory("protractor", protHistory, TOOL_COLORS.protractor);
-    renderToolHistory("line", lineHistory, TOOL_COLORS.line);
-    renderToolHistory("compass", compassHistory, TOOL_COLORS.compass);
-  }
-  function restoreToolEntry(d) {
-    const color = TOOL_COLORS[d.type];
-    if (!color) return;
-    const layers = [];
-    if (d.type === "ruler") {
-      const pts = d.points.map((p) => L.latLng(p[0], p[1]));
-      pts.forEach((p) => layers.push(L.circleMarker(
-        p,
-        { radius: 4, color, fillColor: color, fillOpacity: 1 }
-      ).addTo(map)));
-      layers.push(L.polyline(pts, { color, weight: 2.5 }).addTo(map));
-      const dist = pts[0].distanceTo(pts[1]);
-      const txt = formatDist(dist);
-      const midLat = (pts[0].lat + pts[1].lat) / 2, midLng = (pts[0].lng + pts[1].lng) / 2;
-      layers.push(L.marker([midLat, midLng], { interactive: false, icon: L.divIcon({
-        className: "ruler-label",
-        html: `<span style="background:rgba(255,255,255,0.9);color:${color};font-weight:bold;font-size:12px;padding:2px 6px;border-radius:3px;white-space:nowrap;pointer-events:none">${txt}</span>`,
-        iconAnchor: [0, 12]
-      }) }).addTo(map));
-      rulerHistory.push({ layers, text: txt, data: d });
-    } else if (d.type === "protractor") {
-      const pts = d.points.map((p) => L.latLng(p[0], p[1]));
-      pts.forEach((p) => layers.push(L.circleMarker(
-        p,
-        { radius: 4, color, fillColor: color, fillOpacity: 1 }
-      ).addTo(map)));
-      layers.push(L.polyline([pts[0], pts[1]], { color, weight: 2 }).addTo(map));
-      layers.push(L.polyline([pts[1], pts[2]], { color, weight: 2 }).addTo(map));
-      const angle = computeAngle(pts[0], pts[1], pts[2]);
-      const arc = drawAngleArc(pts[1], pts[0], pts[2], angle, color);
-      if (arc) layers.push(arc);
-      const txt = `${angle.toFixed(1)}\xB0`;
-      layers.push(L.marker([pts[1].lat, pts[1].lng], { interactive: false, icon: L.divIcon({
-        className: "prot-label",
-        html: `<span style="background:rgba(255,255,255,0.9);color:${color};font-weight:bold;font-size:12px;padding:2px 6px;border-radius:3px;white-space:nowrap;pointer-events:none">${txt}</span>`,
-        iconAnchor: [-8, 12]
-      }) }).addTo(map));
-      const d1 = pts[1].distanceTo(pts[0]), d2 = pts[1].distanceTo(pts[2]);
-      protHistory.push({
-        layers,
-        text: `${txt} (${formatDist(d1)} / ${formatDist(d2)})`,
-        data: d
-      });
-    } else if (d.type === "line") {
-      const pts = d.points.map((p) => L.latLng(p[0], p[1]));
-      const segLayers = [], segLabels = [];
-      pts.forEach((p) => layers.push(L.circleMarker(
-        p,
-        { radius: 4, color, fillColor: color, fillOpacity: 1 }
-      ).addTo(map)));
-      for (let i = 1; i < pts.length; i++) {
-        segLayers.push(L.polyline([pts[i - 1], pts[i]], { color, weight: 2.5 }).addTo(map));
-        const sd = pts[i - 1].distanceTo(pts[i]);
-        const ml = (pts[i - 1].lat + pts[i].lat) / 2;
-        const mg = (pts[i - 1].lng + pts[i].lng) / 2;
-        segLabels.push(L.marker([ml, mg], { interactive: false, icon: L.divIcon({
-          className: "line-label",
-          html: `<span style="background:rgba(255,255,255,0.9);color:${color};font-weight:bold;font-size:11px;padding:1px 5px;border-radius:3px;white-space:nowrap;pointer-events:none">${formatDist(sd)}</span>`,
-          iconAnchor: [0, 12]
-        }) }).addTo(map));
-      }
-      layers.push(...segLayers, ...segLabels);
-      let total = 0;
-      for (let i = 1; i < pts.length; i++) total += pts[i - 1].distanceTo(pts[i]);
-      const txt = `${pts.length} pt \u2014 ${formatDist(total)}`;
-      lineHistory.push({ layers, text: txt, data: d });
-    } else if (d.type === "compass") {
-      const center = L.latLng(d.center[0], d.center[1]);
-      const edge = L.latLng(d.edge[0], d.edge[1]);
-      const r = center.distanceTo(edge);
-      layers.push(L.circleMarker(
-        center,
-        { radius: 5, color, fillColor: color, fillOpacity: 1 }
-      ).addTo(map));
-      layers.push(L.circle(center, {
-        radius: r,
-        color,
-        weight: 2.5,
-        fill: true,
-        fillColor: color,
-        fillOpacity: 0.08
-      }).addTo(map));
-      layers.push(L.polyline([center, edge], { color, weight: 2 }).addTo(map));
-      layers.push(L.circleMarker(
-        edge,
-        { radius: 4, color, fillColor: color, fillOpacity: 1 }
-      ).addTo(map));
-      const midLat = (center.lat + edge.lat) / 2, midLng = (center.lng + edge.lng) / 2;
-      layers.push(L.marker([midLat, midLng], { interactive: false, icon: L.divIcon({
-        className: "compass-label",
-        html: `<span style="background:rgba(255,255,255,0.9);color:${color};font-weight:bold;font-size:12px;padding:2px 6px;border-radius:3px;white-space:nowrap;pointer-events:none">r = ${formatDist(r)}</span>`,
-        iconAnchor: [0, 12]
-      }) }).addTo(map));
-      const area = Math.PI * r * r;
-      const shortTxt = `r=${formatDist(r)} A=${formatArea(area)}`;
-      compassHistory.push({ layers, text: shortTxt, data: d });
-    }
-  }
-  function collectToolData() {
-    const all = [];
-    rulerHistory.forEach((e) => {
-      if (e.data) all.push(e.data);
-    });
-    protHistory.forEach((e) => {
-      if (e.data) all.push(e.data);
-    });
-    lineHistory.forEach((e) => {
-      if (e.data) all.push(e.data);
-    });
-    compassHistory.forEach((e) => {
-      if (e.data) all.push(e.data);
-    });
-    return all;
-  }
-  function clearAllTools() {
-    [rulerHistory, protHistory, lineHistory, compassHistory].forEach((arr) => {
-      arr.forEach((e) => e.layers.forEach((l) => {
-        try {
-          map.removeLayer(l);
-        } catch (x) {
-        }
-      }));
-      arr.length = 0;
-    });
-    renderAllToolHistories();
-  }
-  function loadToolData(dataArr) {
-    clearAllTools();
-    dataArr.forEach((d) => restoreToolEntry(d));
-    renderAllToolHistories();
-  }
-  var rulerPoints = [];
-  var rulerMarkers = [];
-  var rulerLine = null;
-  var rulerMoveHandler = null;
-  var rulerTempLine = null;
-  var rulerLabel = null;
-  var rulerLiveDist = null;
-  function activateRuler() {
-    document.getElementById("rulerInfo").style.display = "block";
-    document.getElementById("rulerResult").textContent = "";
-    if (isTouch) {
-      const el = document.querySelector('#rulerInfo [data-i18n="tool.ruler.info"]');
-      if (el) el.textContent = t("tool.ruler.infoTouch");
-    }
-    map.getContainer().classList.add("ruler-cursor");
-    map.on("click", rulerClick);
-  }
-  function deactivateRuler() {
-    document.getElementById("rulerInfo").style.display = "none";
-    map.getContainer().classList.remove("ruler-cursor");
-    map.off("click", rulerClick);
-    resetRulerDraw();
-  }
-  function rulerClick(e) {
-    if (rulerPoints.length >= 2) resetRulerDraw();
-    const pt = snapToWaypoint(e.latlng);
-    rulerPoints.push(pt);
-    const color = TOOL_COLORS.ruler;
-    rulerMarkers.push(L.circleMarker(
-      pt,
-      { radius: 5, color, fillColor: color, fillOpacity: 1 }
-    ).addTo(map));
-    if (rulerPoints.length === 1) {
-      rulerTempLine = L.polyline([pt, pt], { color, weight: 2, dashArray: "6 4" }).addTo(map);
-      rulerMoveHandler = (ev) => {
-        const sp = snapToWaypoint(ev.latlng);
-        rulerTempLine.setLatLngs([rulerPoints[0], sp]);
-        const d = rulerPoints[0].distanceTo(sp);
-        if (rulerLiveDist) map.removeLayer(rulerLiveDist);
-        const mLat = (rulerPoints[0].lat + sp.lat) / 2;
-        const mLng = (rulerPoints[0].lng + sp.lng) / 2;
-        rulerLiveDist = L.marker([mLat, mLng], { interactive: false, icon: L.divIcon({
-          className: "ruler-label",
-          html: `<span style="background:rgba(255,255,255,0.85);color:#dc2626;font-weight:bold;font-size:12px;padding:1px 5px;border-radius:3px;white-space:nowrap;pointer-events:none">${formatDist(d)}</span>`,
-          iconAnchor: [0, 12]
-        }) }).addTo(map);
-        status(`${t("msg.distance")}: ${formatDist(d)} \u2014 ${t("msg.clickEndPoint")}`);
-      };
-      map.on("mousemove", rulerMoveHandler);
-    }
-    if (rulerPoints.length === 2) {
-      if (rulerTempLine) {
-        map.removeLayer(rulerTempLine);
-        rulerTempLine = null;
-      }
-      if (rulerMoveHandler) {
-        map.off("mousemove", rulerMoveHandler);
-        rulerMoveHandler = null;
-      }
-      if (rulerLiveDist) {
-        map.removeLayer(rulerLiveDist);
-        rulerLiveDist = null;
-      }
-      rulerLine = L.polyline(rulerPoints, { color, weight: 2.5 }).addTo(map);
-      const dist = rulerPoints[0].distanceTo(rulerPoints[1]);
-      const txt = formatDist(dist);
-      const midLat = (rulerPoints[0].lat + rulerPoints[1].lat) / 2;
-      const midLng = (rulerPoints[0].lng + rulerPoints[1].lng) / 2;
-      rulerLabel = L.marker([midLat, midLng], { interactive: false, icon: L.divIcon({
-        className: "ruler-label",
-        html: `<span style="background:rgba(255,255,255,0.9);color:#dc2626;font-weight:bold;font-size:12px;padding:2px 6px;border-radius:3px;white-space:nowrap;pointer-events:none">${txt}</span>`,
-        iconAnchor: [0, 12]
-      }) }).addTo(map);
-      document.getElementById("rulerResult").textContent = txt;
-      status(`${t("msg.measuredDistance")}: ${txt}`);
-      rulerHistory.push({
-        layers: [...rulerMarkers, rulerLine, rulerLabel],
-        text: txt,
-        data: { type: "ruler", points: rulerPoints.map((p) => [p.lat, p.lng]) }
-      });
-      rulerMarkers = [];
-      rulerLine = null;
-      rulerLabel = null;
-      rulerPoints = [];
-      renderToolHistory("ruler", rulerHistory, TOOL_COLORS.ruler);
-    }
-  }
-  function resetRulerDraw() {
-    rulerMarkers.forEach((m) => map.removeLayer(m));
-    rulerMarkers = [];
-    rulerPoints = [];
-    if (rulerLine) {
-      map.removeLayer(rulerLine);
-      rulerLine = null;
-    }
-    if (rulerTempLine) {
-      map.removeLayer(rulerTempLine);
-      rulerTempLine = null;
-    }
-    if (rulerMoveHandler) {
-      map.off("mousemove", rulerMoveHandler);
-      rulerMoveHandler = null;
-    }
-    if (rulerLabel) {
-      map.removeLayer(rulerLabel);
-      rulerLabel = null;
-    }
-    if (rulerLiveDist) {
-      map.removeLayer(rulerLiveDist);
-      rulerLiveDist = null;
-    }
-    document.getElementById("rulerResult").textContent = "";
-  }
-  var protPoints = [];
-  var protMarkers = [];
-  var protLines = [];
-  var protArc = null;
-  var protLabel = null;
-  var protArm1Label = null;
-  var protArm2Label = null;
-  var protMoveHandler = null;
-  var protTempLine = null;
-  function activateProtractor() {
-    document.getElementById("protractorInfo").style.display = "block";
-    document.getElementById("protractorResult").textContent = "";
-    if (isTouch) {
-      const el = document.querySelector('#protractorInfo [data-i18n="tool.protractor.info"]');
-      if (el) el.textContent = t("tool.protractor.infoTouch");
-    }
-    map.getContainer().classList.add("ruler-cursor");
-    map.on("click", protractorClick);
-  }
-  function deactivateProtractor() {
-    document.getElementById("protractorInfo").style.display = "none";
-    map.getContainer().classList.remove("ruler-cursor");
-    map.off("click", protractorClick);
-    resetProtDraw();
-  }
-  function protractorClick(e) {
-    if (protPoints.length >= 3) resetProtDraw();
-    const pt = snapToWaypoint(e.latlng);
-    protPoints.push(pt);
-    const color = TOOL_COLORS.protractor;
-    protMarkers.push(L.circleMarker(
-      pt,
-      { radius: 5, color, fillColor: color, fillOpacity: 1 }
-    ).addTo(map));
-    if (protPoints.length === 1) {
-      protTempLine = L.polyline([pt, pt], { color, weight: 2, dashArray: "6 4" }).addTo(map);
-      protMoveHandler = (ev) => {
-        const sp = snapToWaypoint(ev.latlng);
-        protTempLine.setLatLngs([protPoints[0], sp]);
-        status(t("msg.protClickVertex"));
-      };
-      map.on("mousemove", protMoveHandler);
-    }
-    if (protPoints.length === 2) {
-      if (protTempLine) {
-        map.removeLayer(protTempLine);
-        protTempLine = null;
-      }
-      if (protMoveHandler) {
-        map.off("mousemove", protMoveHandler);
-        protMoveHandler = null;
-      }
-      protLines.push(L.polyline([protPoints[0], protPoints[1]], { color, weight: 2.5 }).addTo(map));
-      protTempLine = L.polyline(
-        [protPoints[1], protPoints[1]],
-        { color, weight: 2, dashArray: "6 4" }
-      ).addTo(map);
-      protMoveHandler = (ev) => {
-        const sp = snapToWaypoint(ev.latlng);
-        protTempLine.setLatLngs([protPoints[1], sp]);
-        const angle = computeAngle(protPoints[0], protPoints[1], sp);
-        if (protLabel) map.removeLayer(protLabel);
-        protLabel = L.marker(
-          [protPoints[1].lat, protPoints[1].lng],
-          { interactive: false, icon: L.divIcon({
-            className: "prot-label",
-            html: `<span style="background:rgba(255,255,255,0.85);color:#7c3aed;font-weight:bold;font-size:12px;padding:1px 5px;border-radius:3px;white-space:nowrap;pointer-events:none">${angle.toFixed(1)}\xB0</span>`,
-            iconAnchor: [-8, 12]
-          }) }
-        ).addTo(map);
-        status(`${t("msg.angle")}: ${angle.toFixed(1)}\xB0 \u2014 ${t("msg.clickToFix")}`);
-      };
-      map.on("mousemove", protMoveHandler);
-    }
-    if (protPoints.length === 3) {
-      if (protTempLine) {
-        map.removeLayer(protTempLine);
-        protTempLine = null;
-      }
-      if (protMoveHandler) {
-        map.off("mousemove", protMoveHandler);
-        protMoveHandler = null;
-      }
-      protLines.push(L.polyline([protPoints[1], protPoints[2]], { color, weight: 2.5 }).addTo(map));
-      const angle = computeAngle(protPoints[0], protPoints[1], protPoints[2]);
-      protArc = drawAngleArc(protPoints[1], protPoints[0], protPoints[2], angle, color);
-      const txt = `${angle.toFixed(1)}\xB0`;
-      document.getElementById("protractorResult").textContent = txt;
-      const d1 = protPoints[1].distanceTo(protPoints[0]);
-      const d2 = protPoints[1].distanceTo(protPoints[2]);
-      if (protLabel) map.removeLayer(protLabel);
-      protLabel = L.marker(
-        [protPoints[1].lat, protPoints[1].lng],
-        { interactive: false, icon: L.divIcon({
-          className: "prot-label",
-          html: `<span style="background:rgba(255,255,255,0.9);color:#7c3aed;font-weight:bold;font-size:12px;padding:2px 6px;border-radius:3px;white-space:nowrap;pointer-events:none">${txt}</span>`,
-          iconAnchor: [-8, 12]
-        }) }
-      ).addTo(map);
-      const mid1Lat = (protPoints[0].lat + protPoints[1].lat) / 2;
-      const mid1Lng = (protPoints[0].lng + protPoints[1].lng) / 2;
-      protArm1Label = L.marker([mid1Lat, mid1Lng], { interactive: false, icon: L.divIcon({
-        className: "prot-label",
-        html: `<span style="background:rgba(255,255,255,0.9);color:#7c3aed;font-weight:bold;font-size:11px;padding:1px 5px;border-radius:3px;white-space:nowrap;pointer-events:none">${formatDist(d1)}</span>`,
-        iconAnchor: [0, 12]
-      }) }).addTo(map);
-      const mid2Lat = (protPoints[1].lat + protPoints[2].lat) / 2;
-      const mid2Lng = (protPoints[1].lng + protPoints[2].lng) / 2;
-      protArm2Label = L.marker([mid2Lat, mid2Lng], { interactive: false, icon: L.divIcon({
-        className: "prot-label",
-        html: `<span style="background:rgba(255,255,255,0.9);color:#7c3aed;font-weight:bold;font-size:11px;padding:1px 5px;border-radius:3px;white-space:nowrap;pointer-events:none">${formatDist(d2)}</span>`,
-        iconAnchor: [0, 12]
-      }) }).addTo(map);
-      status(`${t("msg.measuredAngle")}: ${txt}  |  ${t("msg.arm")} 1: ${formatDist(d1)}  |  ${t("msg.arm")} 2: ${formatDist(d2)}`);
-      const allLayers = [...protMarkers, ...protLines];
-      if (protArc) allLayers.push(protArc);
-      if (protLabel) allLayers.push(protLabel);
-      if (protArm1Label) allLayers.push(protArm1Label);
-      if (protArm2Label) allLayers.push(protArm2Label);
-      protHistory.push({
-        layers: allLayers,
-        text: `${txt} (${formatDist(d1)} / ${formatDist(d2)})`,
-        data: { type: "protractor", points: protPoints.map((p) => [p.lat, p.lng]) }
-      });
-      protMarkers = [];
-      protLines = [];
-      protArc = null;
-      protLabel = null;
-      protArm1Label = null;
-      protArm2Label = null;
-      protPoints = [];
-      renderToolHistory("protractor", protHistory, TOOL_COLORS.protractor);
-    }
-  }
-  function resetProtDraw() {
-    protMarkers.forEach((m) => map.removeLayer(m));
-    protMarkers = [];
-    protLines.forEach((l) => map.removeLayer(l));
-    protLines = [];
-    if (protArc) {
-      map.removeLayer(protArc);
-      protArc = null;
-    }
-    if (protLabel) {
-      map.removeLayer(protLabel);
-      protLabel = null;
-    }
-    if (protArm1Label) {
-      map.removeLayer(protArm1Label);
-      protArm1Label = null;
-    }
-    if (protArm2Label) {
-      map.removeLayer(protArm2Label);
-      protArm2Label = null;
-    }
-    if (protTempLine) {
-      map.removeLayer(protTempLine);
-      protTempLine = null;
-    }
-    if (protMoveHandler) {
-      map.off("mousemove", protMoveHandler);
-      protMoveHandler = null;
-    }
-    protPoints = [];
-    document.getElementById("protractorResult").textContent = "";
-  }
-  var linePoints = [];
-  var lineMarkers = [];
-  var lineSegments = [];
-  var lineSegLabels = [];
-  var lineMoveHandler = null;
-  var lineTempLine = null;
-  var lineLiveDist = null;
-  function activateLine() {
-    if (linePoints.length >= 2) {
-      lineFinish();
-      return;
-    }
-    document.getElementById("lineInfo").style.display = "block";
-    document.getElementById("lineResult").textContent = "";
-    if (isTouch) {
-      const el = document.querySelector('#lineInfo [data-i18n="tool.line.info"]');
-      if (el) el.textContent = t("tool.line.infoTouch");
-    }
-    map.getContainer().classList.add("ruler-cursor");
-    map.on("click", lineClick);
-    map.on("dblclick", lineFinish);
-    map.on("contextmenu", lineFinishRight);
-  }
-  function deactivateLine() {
-    if (linePoints.length >= 2) lineFinish();
-    document.getElementById("lineInfo").style.display = "none";
-    map.getContainer().classList.remove("ruler-cursor");
-    map.off("click", lineClick);
-    map.off("dblclick", lineFinish);
-    map.off("contextmenu", lineFinishRight);
-    resetLineDraw();
-  }
-  function lineClick(e) {
-    const color = TOOL_COLORS.line;
-    const pt = snapToWaypoint(e.latlng);
-    linePoints.push(pt);
-    lineMarkers.push(L.circleMarker(
-      pt,
-      { radius: 4, color, fillColor: color, fillOpacity: 1 }
-    ).addTo(map));
-    if (linePoints.length > 1) {
-      const prev = linePoints[linePoints.length - 2];
-      lineSegments.push(L.polyline([prev, pt], { color, weight: 2.5 }).addTo(map));
-      const segDist = prev.distanceTo(pt);
-      const midLat = (prev.lat + pt.lat) / 2;
-      const midLng = (prev.lng + pt.lng) / 2;
-      lineSegLabels.push(L.marker(
-        [midLat, midLng],
-        { interactive: false, icon: L.divIcon({
-          className: "line-label",
-          html: `<span style="background:rgba(255,255,255,0.9);color:#0891b2;font-weight:bold;font-size:11px;padding:1px 5px;border-radius:3px;white-space:nowrap;pointer-events:none">${formatDist(segDist)}</span>`,
-          iconAnchor: [0, 12]
-        }) }
-      ).addTo(map));
-      if (lineTempLine) {
-        map.removeLayer(lineTempLine);
-        lineTempLine = null;
-      }
-      if (lineMoveHandler) {
-        map.off("mousemove", lineMoveHandler);
-        lineMoveHandler = null;
-      }
-    }
-    lineTempLine = L.polyline([pt, pt], { color, weight: 2, dashArray: "6 4" }).addTo(map);
-    lineMoveHandler = (ev) => {
-      const sp = snapToWaypoint(ev.latlng);
-      lineTempLine.setLatLngs([linePoints[linePoints.length - 1], sp]);
-      const segDist = linePoints[linePoints.length - 1].distanceTo(sp);
-      const totalDist = lineTotalDist() + segDist;
-      if (lineLiveDist) map.removeLayer(lineLiveDist);
-      const mLat = (linePoints[linePoints.length - 1].lat + sp.lat) / 2;
-      const mLng = (linePoints[linePoints.length - 1].lng + sp.lng) / 2;
-      lineLiveDist = L.marker([mLat, mLng], { interactive: false, icon: L.divIcon({
-        className: "line-label",
-        html: `<span style="background:rgba(255,255,255,0.85);color:#0891b2;font-weight:bold;font-size:11px;padding:1px 5px;border-radius:3px;white-space:nowrap;pointer-events:none">${formatDist(segDist)}</span>`,
-        iconAnchor: [0, 12]
-      }) }).addTo(map);
-      let info = `${t("msg.segment")}: ${formatDist(segDist)} | ${t("msg.total")}: ${formatDist(totalDist)}`;
-      if (linePoints.length >= 2) {
-        const prev = linePoints[linePoints.length - 2];
-        const cur = linePoints[linePoints.length - 1];
-        const angle = computeAngle(prev, cur, sp);
-        info += ` | ${t("msg.angle")}: ${angle.toFixed(1)}\xB0`;
-      }
-      info += ` \u2014 ${t("msg.rightClickFinish")}`;
-      status(info);
-    };
-    map.on("mousemove", lineMoveHandler);
-    updateLineResult();
-    updateLineUndoBtn();
-    updateMobileToolBar();
-  }
-  function lineFinishRight(e) {
-    if (e && e.originalEvent) e.originalEvent.preventDefault();
-    lineFinish();
-  }
-  function lineFinish() {
-    if (lineTempLine) {
-      map.removeLayer(lineTempLine);
-      lineTempLine = null;
-    }
-    if (lineMoveHandler) {
-      map.off("mousemove", lineMoveHandler);
-      lineMoveHandler = null;
-    }
-    if (lineLiveDist) {
-      map.removeLayer(lineLiveDist);
-      lineLiveDist = null;
-    }
-    if (linePoints.length >= 2) {
-      const txt = `${linePoints.length} pt \u2014 ${formatDist(lineTotalDist())}`;
-      updateLineResult();
-      status(`${t("msg.trackComplete")}: ${linePoints.length} ${t("msg.points")}, ${formatDist(lineTotalDist())}`);
-      lineHistory.push({
-        layers: [...lineMarkers, ...lineSegments, ...lineSegLabels],
-        text: txt,
-        data: { type: "line", points: linePoints.map((p) => [p.lat, p.lng]) }
-      });
-      lineMarkers = [];
-      lineSegments = [];
-      lineSegLabels = [];
-      linePoints = [];
-      renderToolHistory("line", lineHistory, TOOL_COLORS.line);
-    }
-    updateMobileToolBar();
-  }
-  function lineTotalDist() {
-    let total = 0;
-    for (let i = 1; i < linePoints.length; i++) total += linePoints[i - 1].distanceTo(linePoints[i]);
-    return total;
-  }
-  function updateLineResult() {
-    const el = document.getElementById("lineResult");
-    if (linePoints.length < 2) {
-      el.textContent = "";
-      return;
-    }
-    let txt = `${linePoints.length} ${t("msg.points")} \u2014 ${t("msg.total")}: ${formatDist(lineTotalDist())}`;
-    const parts = [];
-    for (let i = 1; i < linePoints.length; i++) {
-      parts.push(formatDist(linePoints[i - 1].distanceTo(linePoints[i])));
-    }
-    txt += `
-${t("msg.segments")}: ${parts.join(" \u2192 ")}`;
-    if (linePoints.length >= 3) {
-      const angles = [];
-      for (let i = 1; i < linePoints.length - 1; i++) {
-        angles.push(
-          computeAngle(linePoints[i - 1], linePoints[i], linePoints[i + 1]).toFixed(1) + "\xB0"
-        );
-      }
-      txt += `
-${t("msg.angles")}: ${angles.join(", ")}`;
-    }
-    el.textContent = txt;
-  }
-  function updateLineUndoBtn() {
-    const btn = document.getElementById("btnLineUndo");
-    if (!btn) return;
-    btn.style.display = linePoints.length || lineHistory.length ? "" : "none";
-  }
-  function lineUndo() {
-    if (linePoints.length) {
-      linePoints.pop();
-      if (lineMarkers.length) map.removeLayer(lineMarkers.pop());
-      if (lineSegments.length) map.removeLayer(lineSegments.pop());
-      if (lineSegLabels.length) map.removeLayer(lineSegLabels.pop());
-      if (lineTempLine) {
-        map.removeLayer(lineTempLine);
-        lineTempLine = null;
-      }
-      if (lineMoveHandler) {
-        map.off("mousemove", lineMoveHandler);
-        lineMoveHandler = null;
-      }
-      if (lineLiveDist) {
-        map.removeLayer(lineLiveDist);
-        lineLiveDist = null;
-      }
-      if (linePoints.length) {
-        const color = TOOL_COLORS.line;
-        const lastPt = linePoints[linePoints.length - 1];
-        lineTempLine = L.polyline(
-          [lastPt, lastPt],
-          { color, weight: 2, dashArray: "6 4" }
-        ).addTo(map);
-        lineMoveHandler = (ev) => {
-          lineTempLine.setLatLngs([linePoints[linePoints.length - 1], ev.latlng]);
-          const segDist = linePoints[linePoints.length - 1].distanceTo(ev.latlng);
-          const totalDist = lineTotalDist() + segDist;
-          if (lineLiveDist) map.removeLayer(lineLiveDist);
-          const mLat = (linePoints[linePoints.length - 1].lat + ev.latlng.lat) / 2;
-          const mLng = (linePoints[linePoints.length - 1].lng + ev.latlng.lng) / 2;
-          lineLiveDist = L.marker([mLat, mLng], { interactive: false, icon: L.divIcon({
-            className: "line-label",
-            html: `<span style="background:rgba(255,255,255,0.85);color:#0891b2;font-weight:bold;font-size:11px;padding:1px 5px;border-radius:3px;white-space:nowrap;pointer-events:none">${formatDist(segDist)}</span>`,
-            iconAnchor: [0, 12]
-          }) }).addTo(map);
-          let info = `${t("msg.segment")}: ${formatDist(segDist)} | ${t("msg.total")}: ${formatDist(totalDist)}`;
-          if (linePoints.length >= 2) {
-            const prev = linePoints[linePoints.length - 2];
-            const cur = linePoints[linePoints.length - 1];
-            const angle = computeAngle(prev, cur, ev.latlng);
-            info += ` | ${t("msg.angle")}: ${angle.toFixed(1)}\xB0`;
-          }
-          info += ` \u2014 ${t("msg.rightClickFinish")}`;
-          status(info);
-        };
-        map.on("mousemove", lineMoveHandler);
-      }
-      updateLineResult();
-    } else if (lineHistory.length) {
-      const last = lineHistory.pop();
-      last.layers.forEach((l) => {
-        try {
-          map.removeLayer(l);
-        } catch (e) {
-        }
-      });
-      const pts = last.data.points;
-      pts.pop();
-      if (pts.length >= 2) {
-        const color = TOOL_COLORS.line;
-        const markers = [], segs = [], labels = [];
-        for (let i = 0; i < pts.length; i++) {
-          markers.push(L.circleMarker(
-            pts[i],
-            { radius: 4, color, fillColor: color, fillOpacity: 1 }
-          ).addTo(map));
-          if (i > 0) {
-            segs.push(L.polyline(
-              [pts[i - 1], pts[i]],
-              { color, weight: 2.5 }
-            ).addTo(map));
-            const d = L.latLng(pts[i - 1]).distanceTo(L.latLng(pts[i]));
-            const mLat = (pts[i - 1][0] + pts[i][0]) / 2;
-            const mLng = (pts[i - 1][1] + pts[i][1]) / 2;
-            labels.push(L.marker([mLat, mLng], { interactive: false, icon: L.divIcon({
-              className: "line-label",
-              html: `<span style="background:rgba(255,255,255,0.9);color:#0891b2;font-weight:bold;font-size:11px;padding:1px 5px;border-radius:3px;white-space:nowrap;pointer-events:none">${formatDist(d)}</span>`,
-              iconAnchor: [0, 12]
-            }) }).addTo(map));
-          }
-        }
-        let total = 0;
-        for (let i = 1; i < pts.length; i++) {
-          total += L.latLng(pts[i - 1]).distanceTo(L.latLng(pts[i]));
-        }
-        const txt = `${pts.length} pt \u2014 ${formatDist(total)}`;
-        lineHistory.push({
-          layers: [...markers, ...segs, ...labels],
-          text: txt,
-          data: { type: "line", points: pts }
-        });
-      }
-      renderToolHistory("line", lineHistory, TOOL_COLORS.line);
-    }
-    updateLineUndoBtn();
-    updateMobileToolBar();
-  }
-  function resetLineDraw() {
-    lineMarkers.forEach((m) => map.removeLayer(m));
-    lineMarkers = [];
-    lineSegments.forEach((s) => map.removeLayer(s));
-    lineSegments = [];
-    lineSegLabels.forEach((l) => map.removeLayer(l));
-    lineSegLabels = [];
-    if (lineTempLine) {
-      map.removeLayer(lineTempLine);
-      lineTempLine = null;
-    }
-    if (lineMoveHandler) {
-      map.off("mousemove", lineMoveHandler);
-      lineMoveHandler = null;
-    }
-    if (lineLiveDist) {
-      map.removeLayer(lineLiveDist);
-      lineLiveDist = null;
-    }
-    linePoints = [];
-    document.getElementById("lineResult").textContent = "";
-  }
-  var compassCenter = null;
-  var compassCenterMarker = null;
-  var compassCircle = null;
-  var compassRadiusLine = null;
-  var compassMoveHandler = null;
-  var compassFixed = false;
-  var compassRadiusLabel = null;
-  var compassCircumfLabel = null;
-  var compassAreaLabel = null;
-  function activateCompass() {
-    document.getElementById("compassInfo").style.display = "block";
-    document.getElementById("compassResult").textContent = "";
-    if (isTouch) {
-      const el = document.querySelector('#compassInfo [data-i18n="tool.compass.info"]');
-      if (el) el.textContent = t("tool.compass.infoTouch");
-    }
-    compassFixed = false;
-    map.getContainer().classList.add("ruler-cursor");
-    map.on("click", compassClick);
-  }
-  function deactivateCompass() {
-    document.getElementById("compassInfo").style.display = "none";
-    map.getContainer().classList.remove("ruler-cursor");
-    map.off("click", compassClick);
-    resetCompassDraw();
-  }
-  function compassClick(e) {
-    const color = TOOL_COLORS.compass;
-    if (!compassCenter) {
-      const pt = snapToWaypoint(e.latlng);
-      compassCenter = pt;
-      compassCenterMarker = L.circleMarker(
-        pt,
-        { radius: 5, color, fillColor: color, fillOpacity: 1 }
-      ).addTo(map);
-      compassMoveHandler = (ev) => {
-        const sp = snapToWaypoint(ev.latlng);
-        const r = compassCenter.distanceTo(sp);
-        if (compassCircle) map.removeLayer(compassCircle);
-        if (compassRadiusLine) map.removeLayer(compassRadiusLine);
-        if (compassRadiusLabel) map.removeLayer(compassRadiusLabel);
-        compassCircle = L.circle(compassCenter, {
-          radius: r,
-          color,
-          weight: 2,
-          fill: true,
-          fillColor: color,
-          fillOpacity: 0.08
-        }).addTo(map);
-        compassRadiusLine = L.polyline(
-          [compassCenter, sp],
-          { color, weight: 2, dashArray: "6 4" }
-        ).addTo(map);
-        const midLat = (compassCenter.lat + sp.lat) / 2;
-        const midLng = (compassCenter.lng + sp.lng) / 2;
-        compassRadiusLabel = L.marker(
-          [midLat, midLng],
-          { interactive: false, icon: L.divIcon({
-            className: "compass-label",
-            html: `<span style="background:rgba(255,255,255,0.85);color:#ea580c;font-weight:bold;font-size:12px;padding:1px 5px;border-radius:3px;white-space:nowrap;pointer-events:none">r = ${formatDist(r)}</span>`,
-            iconAnchor: [0, 12]
-          }) }
-        ).addTo(map);
-        const area = Math.PI * r * r;
-        const circumf = 2 * Math.PI * r;
-        status(`${t("msg.radius")}: ${formatDist(r)} | ${t("msg.diameter")}: ${formatDist(r * 2)} | ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatArea(area)}`);
-      };
-      map.on("mousemove", compassMoveHandler);
-    } else {
-      const pt = snapToWaypoint(e.latlng);
-      if (compassMoveHandler) {
-        map.off("mousemove", compassMoveHandler);
-        compassMoveHandler = null;
-      }
-      const r = compassCenter.distanceTo(pt);
-      if (compassCircle) map.removeLayer(compassCircle);
-      if (compassRadiusLine) map.removeLayer(compassRadiusLine);
-      compassCircle = L.circle(compassCenter, {
-        radius: r,
-        color,
-        weight: 2.5,
-        fill: true,
-        fillColor: color,
-        fillOpacity: 0.08
-      }).addTo(map);
-      compassRadiusLine = L.polyline([compassCenter, pt], { color, weight: 2 }).addTo(map);
-      const edgeMarker = L.circleMarker(
-        pt,
-        { radius: 4, color, fillColor: color, fillOpacity: 1 }
-      ).addTo(map);
-      const area = Math.PI * r * r;
-      const circumf = 2 * Math.PI * r;
-      if (compassRadiusLabel) map.removeLayer(compassRadiusLabel);
-      const midLat = (compassCenter.lat + pt.lat) / 2;
-      const midLng = (compassCenter.lng + pt.lng) / 2;
-      compassRadiusLabel = L.marker(
-        [midLat, midLng],
-        { interactive: false, icon: L.divIcon({
-          className: "compass-label",
-          html: `<span style="background:rgba(255,255,255,0.9);color:#ea580c;font-weight:bold;font-size:12px;padding:2px 6px;border-radius:3px;white-space:nowrap;pointer-events:none">r = ${formatDist(r)}</span>`,
-          iconAnchor: [0, 12]
-        }) }
-      ).addTo(map);
-      const topLat = compassCenter.lat + r / 111320;
-      compassCircumfLabel = L.marker(
-        [topLat, compassCenter.lng],
-        { interactive: false, icon: L.divIcon({
-          className: "compass-label",
-          html: `<span style="background:rgba(255,255,255,0.9);color:#ea580c;font-weight:bold;font-size:12px;padding:2px 6px;border-radius:3px;white-space:nowrap;pointer-events:none">C = ${formatDist(circumf)}</span>`,
-          iconAnchor: [30, 24]
-        }) }
-      ).addTo(map);
-      compassAreaLabel = L.marker(
-        [compassCenter.lat, compassCenter.lng],
-        { interactive: false, icon: L.divIcon({
-          className: "compass-label",
-          html: `<span style="background:rgba(255,255,255,0.9);color:#ea580c;font-weight:bold;font-size:11px;padding:2px 6px;border-radius:3px;white-space:nowrap;pointer-events:none">A = ${formatArea(area)}</span>`,
-          iconAnchor: [30, 6]
-        }) }
-      ).addTo(map);
-      const shortTxt = `r=${formatDist(r)} A=${formatArea(area)}`;
-      const fullTxt = `${t("msg.radius")}: ${formatDist(r)} | ${t("msg.diameter")}: ${formatDist(r * 2)}
-${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatArea(area)}`;
-      document.getElementById("compassResult").textContent = fullTxt;
-      status(`${t("msg.circleFixed")} \u2014 ${fullTxt.replace(/\n/g, " | ")}`);
-      const layers = [
-        compassCenterMarker,
-        compassCircle,
-        compassRadiusLine,
-        compassRadiusLabel,
-        compassCircumfLabel,
-        compassAreaLabel,
-        edgeMarker
-      ].filter(Boolean);
-      compassHistory.push({
-        layers,
-        text: shortTxt,
-        data: { type: "compass", center: [compassCenter.lat, compassCenter.lng], edge: [pt.lat, pt.lng] }
-      });
-      compassCenterMarker = null;
-      compassCircle = null;
-      compassRadiusLine = null;
-      compassRadiusLabel = null;
-      compassCircumfLabel = null;
-      compassAreaLabel = null;
-      compassCenter = null;
-      compassFixed = false;
-      renderToolHistory("compass", compassHistory, TOOL_COLORS.compass);
-    }
-  }
-  function resetCompassDraw() {
-    if (compassCenterMarker) {
-      map.removeLayer(compassCenterMarker);
-      compassCenterMarker = null;
-    }
-    if (compassCircle) {
-      map.removeLayer(compassCircle);
-      compassCircle = null;
-    }
-    if (compassRadiusLine) {
-      map.removeLayer(compassRadiusLine);
-      compassRadiusLine = null;
-    }
-    if (compassMoveHandler) {
-      map.off("mousemove", compassMoveHandler);
-      compassMoveHandler = null;
-    }
-    if (compassRadiusLabel) {
-      map.removeLayer(compassRadiusLabel);
-      compassRadiusLabel = null;
-    }
-    if (compassCircumfLabel) {
-      map.removeLayer(compassCircumfLabel);
-      compassCircumfLabel = null;
-    }
-    if (compassAreaLabel) {
-      map.removeLayer(compassAreaLabel);
-      compassAreaLabel = null;
-    }
-    compassCenter = null;
-    compassFixed = false;
-    document.getElementById("compassResult").textContent = "";
-  }
-  var TOOL_TABLE = {
-    ruler: { btn: $btnRuler, activate: activateRuler, deactivate: deactivateRuler },
-    protractor: { btn: $btnProtractor, activate: activateProtractor, deactivate: deactivateProtractor },
-    line: { btn: $btnLine, activate: activateLine, deactivate: deactivateLine },
-    compass: { btn: $btnCompass, activate: activateCompass, deactivate: deactivateCompass }
-  };
-  function toggleTool(name) {
-    if (state.activeTool === name) {
-      deactivateAllTools();
-      return;
-    }
-    deactivateAllTools();
-    state.activeTool = name;
-    const tool = TOOL_TABLE[name];
-    if (tool) {
-      tool.btn.classList.add("active");
-      tool.activate();
-    }
-    renderWaypointMarkers();
-    map.doubleClickZoom.disable();
-    if (window.innerWidth <= 768 || isTouch) {
-      closeSidebarMobile();
-      showMobileToolBar();
-      updateMobileToolBar();
-    }
-  }
-  function deactivateAllTools() {
-    if (state.activeTool && TOOL_TABLE[state.activeTool]) {
-      TOOL_TABLE[state.activeTool].deactivate();
-    }
-    state.activeTool = null;
-    for (const k of Object.keys(TOOL_TABLE)) TOOL_TABLE[k].btn.classList.remove("active");
-    renderWaypointMarkers();
-    if (state.wpMapActive) deactivateWaypoint();
-    map.doubleClickZoom.enable();
-    hideMobileToolBar();
-  }
-  function updateMobileToolBar() {
-    if (!$mobileToolBar.classList.contains("visible")) return;
-    $mtbDone.style.display = state.activeTool === "line" && linePoints.length >= 2 ? "" : "none";
-    $mtbUndo.style.display = state.activeTool === "line" && (linePoints.length > 0 || lineHistory.length > 0) ? "" : "none";
-  }
-
   // cartograpy/static/src/config.js
+  init_tools();
   var CONFIG_FIELDS = {
     scale: { el: () => $scale, type: "value" },
     paper: { el: () => $paper, type: "value" },
@@ -2060,6 +2591,7 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
     source: { el: () => $source, type: "value" },
     dpi: { el: () => $dpi, type: "value" },
     mapTextScale: { el: () => $mapTextScale, type: "value" },
+    bearing: { el: () => $bearing, type: "value" },
     gridType: { el: () => $gridType, type: "value" },
     gridScale: { el: () => $gridScale, type: "value" },
     fullLabels: { el: () => $fullLabels, type: "checked" },
@@ -2099,6 +2631,10 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
         if (cfg[k] !== void 0) def.el()[def.type] = cfg[k];
       }
       if (cfg.lat && cfg.lon) map.setView([cfg.lat, cfg.lon], cfg.zoom || 13);
+      const bearing2 = Number(cfg.bearing);
+      if (Number.isFinite(bearing2) && typeof map.setBearing === "function") {
+        map.setBearing((Math.round(bearing2) % 360 + 360) % 360);
+      }
       const src = $source.value;
       Object.values(tileLayers).forEach((tl) => map.removeLayer(tl));
       if (tileLayers[src]) {
@@ -2123,10 +2659,11 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
     }
   }
   function attachAutoSaveListeners() {
-    [$scale, $paper, $sheets, $source, $dpi, $mapTextScale, $gridType, $gridScale].forEach((el) => el.addEventListener("change", scheduleSaveConfig));
+    [$scale, $paper, $sheets, $source, $dpi, $mapTextScale, $bearing, $gridType, $gridScale].forEach((el) => el.addEventListener("change", scheduleSaveConfig));
     $sheets.addEventListener("input", scheduleSaveConfig);
     [$landscape, $fullLabels].forEach((el) => el.addEventListener("change", scheduleSaveConfig));
     map.on("moveend", scheduleSaveConfig);
+    map.on("rotate", scheduleSaveConfig);
   }
   var $owmHidden = document.getElementById("owmApiKey");
   var $owmField = document.getElementById("owmKeyField");
@@ -2249,6 +2786,9 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
   }
 
   // cartograpy/static/src/print.js
+  init_core();
+  init_state();
+  init_i18n();
   function computeSheetLayout(n, landscape) {
     if (n <= 1) return { cols: 1, rows: 1 };
     let cols, rows;
@@ -2326,6 +2866,7 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
       state.gridLayer = null;
     }
     const gridType = $gridType.value;
+    state.gridEpsg = null;
     if (gridType === "none") return;
     const c = map.getCenter();
     const scale = parseInt($scale.value) || 25e3;
@@ -2337,6 +2878,7 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
       const res = await fetch(url);
       const geojson = await res.json();
       if (geojson.error) return;
+      state.gridEpsg = geojson.epsg || null;
       state.gridLayer = L.geoJSON(geojson, {
         style: { color: "#1e40af", weight: 1.5, opacity: 0.6 },
         onEachFeature: (feature, layer) => {
@@ -2467,6 +3009,329 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
   }
 
   // cartograpy/static/src/main.js
+  init_waypoints();
+  init_tools();
+
+  // cartograpy/static/src/gpx.js
+  init_core();
+  init_state();
+  init_i18n();
+  init_waypoints();
+  init_tools();
+  async function _importGpxText(text) {
+    const res = await fetch("/api/gpx/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+  async function importGpxFile(file) {
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = await _importGpxText(text);
+      const wAdded = (data.waypoints || []).length;
+      (data.waypoints || []).forEach((w) => {
+        waypoints.push({
+          lat: w.lat,
+          lng: w.lng,
+          icon: w.icon,
+          color: w.color,
+          name: w.name || "",
+          id: Date.now() + Math.random()
+        });
+      });
+      const newLines = (data.drawings || []).filter((d) => d.type === "line" && Array.isArray(d.points) && d.points.length >= 2);
+      const tAdded = newLines.length;
+      if (tAdded) {
+        const merged = collectToolData().concat(newLines);
+        loadToolData(merged);
+      }
+      renderWaypointMarkers();
+      renderWaypointList();
+      const bounds = L.latLngBounds([]);
+      (data.waypoints || []).forEach((w) => bounds.extend([w.lat, w.lng]));
+      (data.drawings || []).forEach((d) => (d.points || []).forEach((p) => bounds.extend(p)));
+      if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
+      status(t("gpx.imported", wAdded, tAdded));
+    } catch (e) {
+      alert(t("gpx.importError") + ": " + e.message);
+    }
+  }
+  async function exportGpx() {
+    const wps = waypoints.map((w) => ({ lat: w.lat, lng: w.lng, name: w.name || "" }));
+    const drawings = collectToolData().filter((d) => d.type === "line" || d.type === "route").map((d, i) => ({
+      ...d,
+      name: d.name || (d.type === "route" ? `Route ${i + 1}` : `Track ${i + 1}`)
+    }));
+    if (!wps.length && !drawings.length) {
+      alert(t("gpx.nothingToExport"));
+      return;
+    }
+    try {
+      const res = await fetch("/api/gpx/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ waypoints: wps, drawings })
+      });
+      if (!res.ok) {
+        const j = await res.json();
+        throw new Error(j.error || "export failed");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `cartograpy_${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.gpx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      status(t("gpx.exported"));
+    } catch (e) {
+      alert(t("gpx.exportError") + ": " + e.message);
+    }
+  }
+  function setupGpxUI() {
+    const wpFilePanel = document.getElementById("wpFilePanel");
+    if (!wpFilePanel) return;
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex; gap:4px; margin-top:4px;";
+    row.innerHTML = `
+    <input type="file" id="gpxFile" accept=".gpx,application/gpx+xml,text/xml"
+           style="display:none;">
+    <button class="btn btn-sm btn-secondary" id="btnGpxImport" style="flex:1;">
+      <i class="fa-solid fa-file-import"></i>
+      <span data-i18n="btn.gpxImport">Import GPX</span>
+    </button>
+    <button class="btn btn-sm btn-secondary" id="btnGpxExport" style="flex:1;">
+      <i class="fa-solid fa-file-export"></i>
+      <span data-i18n="btn.gpxExport">Export GPX</span>
+    </button>
+  `;
+    wpFilePanel.parentElement.insertBefore(row, wpFilePanel);
+    const fileInput = row.querySelector("#gpxFile");
+    row.querySelector("#btnGpxImport").addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", async (e) => {
+      const file = e.target.files && e.target.files[0];
+      await importGpxFile(file);
+      fileInput.value = "";
+    });
+    row.querySelector("#btnGpxExport").addEventListener("click", exportGpx);
+  }
+
+  // cartograpy/static/src/geomag.js
+  init_core();
+  init_state();
+  init_i18n();
+  var _timer = null;
+  var _badge = null;
+  function _ensureBadge() {
+    if (_badge) return _badge;
+    const mapEl = document.getElementById("map");
+    if (!mapEl) return null;
+    _badge = document.createElement("div");
+    _badge.id = "magBadge";
+    _badge.className = "mag-badge";
+    _badge.style.cssText = "position:absolute; bottom:22px; right:8px; z-index:500; display:none;padding:2px 8px; border-radius:4px;background:rgba(254,243,199,0.92); color:#92400e; font-size:11px;font-weight:600; border:1px solid #fde68a; cursor:help;box-shadow:0 1px 3px rgba(0,0,0,0.15);";
+    mapEl.appendChild(_badge);
+    return _badge;
+  }
+  function _fmt(deg) {
+    const dir = deg >= 0 ? "E" : "W";
+    return `${Math.abs(deg).toFixed(1)}\xB0${dir}`;
+  }
+  async function _refresh() {
+    const c = map.getCenter();
+    const epsg = state.gridEpsg ? `&epsg=${state.gridEpsg}` : "";
+    const url = `/api/declination?lat=${c.lat}&lon=${c.lng}${epsg}`;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.error) return;
+      const badge = _ensureBadge();
+      if (!badge) return;
+      badge.style.display = "";
+      badge.innerHTML = `<i class="fa-solid fa-compass"></i> ${t("mag.label")} ${_fmt(data.declination)}` + (Math.abs(data.convergence) > 0.05 ? `  ${t("mag.gridConv")} ${_fmt(data.convergence)}` : "");
+      badge.title = `${t("mag.model")}: ${data.model} (${Math.floor(data.year)})`;
+    } catch (e) {
+    }
+  }
+  function scheduleMagRefresh() {
+    if (_timer) clearTimeout(_timer);
+    _timer = setTimeout(_refresh, 400);
+  }
+  function initMagDisplay() {
+    map.on("moveend", scheduleMagRefresh);
+    map.on("zoomend", scheduleMagRefresh);
+    if ($gridType) $gridType.addEventListener("change", scheduleMagRefresh);
+    _refresh();
+  }
+
+  // cartograpy/static/src/main.js
+  init_route();
+  init_snap();
+
+  // cartograpy/static/src/compass.js
+  init_core();
+  function _supportsRotate() {
+    return typeof map.setBearing === "function" && typeof map.getBearing === "function";
+  }
+  function _normalizeBearing(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return null;
+    return (Math.round(n) % 360 + 360) % 360;
+  }
+  function _currentBearing() {
+    return _normalizeBearing(map.getBearing() || 0) ?? 0;
+  }
+  function _syncBearingInput() {
+    if (!$bearing) return;
+    $bearing.value = String(_currentBearing());
+  }
+  function _setBearingFromInput(normalizeDisplay = false) {
+    if (!$bearing) return;
+    const bearing2 = _normalizeBearing($bearing.value);
+    if (bearing2 === null) {
+      if (normalizeDisplay) _syncBearingInput();
+      return;
+    }
+    map.setBearing(bearing2);
+    if (normalizeDisplay) $bearing.value = String(bearing2);
+  }
+  function _initBearingInput() {
+    if (!$bearing) return;
+    $bearing.addEventListener("input", () => _setBearingFromInput());
+    $bearing.addEventListener("change", () => _setBearingFromInput(true));
+    $bearing.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        _setBearingFromInput(true);
+        $bearing.blur();
+      }
+    });
+    _syncBearingInput();
+  }
+  function initCompassControl() {
+    if (!_supportsRotate()) {
+      if ($bearing) $bearing.disabled = true;
+      return;
+    }
+    _initBearingInput();
+    const Ctl = L.Control.extend({
+      options: { position: "topright" },
+      onAdd() {
+        const wrap = L.DomUtil.create("div", "leaflet-bar leaflet-control compass-control");
+        wrap.title = "Drag to rotate the map; click to reset north";
+        wrap.innerHTML = `
+        <a href="#" class="compass-btn" role="button" aria-label="Rotate map or reset north">
+          <svg viewBox="0 0 36 36" width="28" height="28" class="compass-svg">
+            <circle cx="18" cy="18" r="16" fill="#fff" stroke="#475569" stroke-width="1.5"/>
+            <text x="18" y="9" text-anchor="middle" font-size="7" font-weight="700"
+                  fill="#dc2626" font-family="sans-serif">N</text>
+            <polygon points="18,5 21,18 18,16 15,18" fill="#dc2626"/>
+            <polygon points="18,31 15,18 18,20 21,18" fill="#475569"/>
+          </svg>
+        </a>`;
+        this._btn = wrap.querySelector(".compass-btn");
+        this._svg = wrap.querySelector(".compass-svg");
+        this._dragging = false;
+        this._moved = false;
+        this._ignoreClick = false;
+        this._start = null;
+        this._onPointerDown = (e) => {
+          if (!this._btn) return;
+          e.preventDefault();
+          e.stopPropagation();
+          this._dragging = true;
+          this._moved = false;
+          this._start = { x: e.clientX, y: e.clientY };
+          this._btn.classList.add("rotating");
+          document.addEventListener("pointermove", this._onPointerMove);
+          document.addEventListener("pointerup", this._onPointerUp);
+          document.addEventListener("pointercancel", this._onPointerUp);
+        };
+        this._onPointerMove = (e) => {
+          if (!this._dragging || !this._btn || !this._start) return;
+          e.preventDefault();
+          const dx = e.clientX - this._start.x;
+          const dy = e.clientY - this._start.y;
+          if (!this._moved && Math.hypot(dx, dy) < 4) return;
+          this._moved = true;
+          const rect = this._btn.getBoundingClientRect();
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          const angle = Math.atan2(e.clientX - cx, cy - e.clientY) * 180 / Math.PI;
+          const bearing2 = (angle + 360) % 360;
+          map.setBearing(bearing2);
+          this._update();
+        };
+        this._onPointerUp = (e) => {
+          if (this._dragging) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          this._dragging = false;
+          if (this._moved) {
+            this._ignoreClick = true;
+            setTimeout(() => {
+              this._ignoreClick = false;
+            }, 250);
+          } else {
+            map.setBearing(0);
+            this._update();
+          }
+          if (this._btn) this._btn.classList.remove("rotating");
+          document.removeEventListener("pointermove", this._onPointerMove);
+          document.removeEventListener("pointerup", this._onPointerUp);
+          document.removeEventListener("pointercancel", this._onPointerUp);
+        };
+        this._btn.addEventListener("pointerdown", this._onPointerDown);
+        L.DomEvent.on(wrap, "click", (e) => {
+          L.DomEvent.preventDefault(e);
+          L.DomEvent.stopPropagation(e);
+          if (this._ignoreClick) {
+            this._ignoreClick = false;
+            return;
+          }
+          map.setBearing(0);
+          this._update();
+        });
+        L.DomEvent.disableClickPropagation(wrap);
+        this._update();
+        return wrap;
+      },
+      onRemove() {
+        if (this._btn && this._onPointerDown) {
+          this._btn.removeEventListener("pointerdown", this._onPointerDown);
+        }
+        if (this._onPointerMove) {
+          document.removeEventListener("pointermove", this._onPointerMove);
+        }
+        if (this._onPointerUp) {
+          document.removeEventListener("pointerup", this._onPointerUp);
+          document.removeEventListener("pointercancel", this._onPointerUp);
+        }
+      },
+      _update() {
+        if (!this._svg) return;
+        const b = map.getBearing() || 0;
+        this._svg.style.transform = `rotate(${-b}deg)`;
+      }
+    });
+    const ctl = new Ctl();
+    ctl.addTo(map);
+    map.on("rotate", () => {
+      ctl._update();
+      _syncBearingInput();
+    });
+  }
+
+  // cartograpy/static/src/main.js
   document.getElementById("toggleSidebar").addEventListener("click", () => {
     document.getElementById("sidebar").classList.toggle("collapsed");
     document.body.classList.toggle("sidebar-hidden");
@@ -2537,13 +3402,16 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
   $btnProtractor.addEventListener("click", () => toggleTool("protractor"));
   $btnLine.addEventListener("click", () => toggleTool("line"));
   $btnCompass.addEventListener("click", () => toggleTool("compass"));
+  $btnRoute.addEventListener("click", () => toggleTool("route"));
   document.getElementById("btnLineUndo").addEventListener("click", lineUndo);
   $mtbDone.addEventListener("click", () => {
     if (state.activeTool === "line") lineFinish();
+    if (state.activeTool === "route") routeFinish();
     updateMobileToolBar();
   });
   $mtbUndo.addEventListener("click", () => {
     if (state.activeTool === "line") lineUndo();
+    if (state.activeTool === "route") routeUndo();
     updateMobileToolBar();
   });
   $mtbCancel.addEventListener("click", deactivateAllTools);
@@ -2729,6 +3597,13 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
   buildIconColorGrids();
   populateOverlayPanel();
   renderWaypointList();
-  loadSources().then(() => loadLanguage("en")).then(() => populateOverlayPanel()).then(() => loadConfig()).then(() => setTimeout(updateOverlays, 500));
+  setupGpxUI();
+  setupRouteUI();
+  initSnap();
+  initCompassControl();
+  loadSources().then(() => loadLanguage("en")).then(() => populateOverlayPanel()).then(() => loadConfig()).then(() => {
+    initMagDisplay();
+    setTimeout(updateOverlays, 500);
+  });
 })();
 //# sourceMappingURL=app.js.map

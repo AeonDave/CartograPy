@@ -24,6 +24,7 @@ from PIL import Image, ImageDraw, ImageFont
 Image.MAX_IMAGE_PIXELS = 400_000_000
 
 from .grid import GRID_SYSTEMS, compute_grid
+from .geomag import compute_geomag
 from .utils import (
     PAPER_SIZES,
     TILE_SIZE,
@@ -158,6 +159,10 @@ def export_map_pdf(
         grid_info = compute_grid(grid_type, center_lat, center_lon,
                                  total_ground_w, total_ground_h, grid_spacing,
                                  scale, full_labels=grid_full_labels)
+
+    # ---- magnetic declination + grid convergence -------------------------
+    geomag_epsg = grid_info.epsg if grid_info else None
+    geomag = compute_geomag(center_lat, center_lon, geomag_epsg)
 
     # ---- page constants --------------------------------------------------
     page_w = int(round(pw_mm / 25.4 * dpi))
@@ -307,16 +312,21 @@ def export_map_pdf(
             if is_last:
                 # Full legend on the last page
                 _draw_scale_bar(dp, margin_px, legend_y, scale, dpi)
+                info_right = page_w - margin_px
+                if sheets > 1:
+                    info_right -= int(35 / 25.4 * dpi)
                 _draw_info(dp, margin_px + int(80 / 25.4 * dpi), legend_y,
-                           scale, center_lat, center_lon, grid_info, source_name, dpi)
+                           scale, center_lat, center_lon, grid_info, source_name,
+                           geomag, dpi, info_right)
 
             if sheets > 1:
                 # Sheet number
                 info_font = _font(max(14, dpi * 9 // 72))
                 sheet_label = f"Sheet {sheet_idx} / {sheets}"
                 if is_last:
-                    # place sheet label to the right of the info block
-                    sx = page_w - margin_px - int(50 / 25.4 * dpi)
+                    # Place sheet label in the reserved right strip so it
+                    # does not collide with the two-column legend text.
+                    sx = page_w - margin_px - int(34 / 25.4 * dpi)
                 else:
                     sx = margin_px
                 dp.text((sx, legend_y), sheet_label, fill=(0, 0, 0), font=info_font)
@@ -329,12 +339,13 @@ def export_map_pdf(
                             fill=(80, 80, 80), font=small_font)
 
                 # Mini position diagram
+                diagram_y = legend_y + int(6 / 25.4 * dpi) if is_last else legend_y
                 _draw_sheet_diagram(dp, page_w - margin_px - int(20 / 25.4 * dpi),
-                                    legend_y, cols, rows, c, r, sheets, dpi)
+                                    diagram_y, cols, rows, c, r, sheets, dpi)
 
-            # north arrow (simple)
+            # north arrow with magnetic + grid declinations
             _draw_north_arrow(dp, page_w - margin_px - int(15 / 25.4 * dpi),
-                              margin_px + int(5 / 25.4 * dpi), dpi)
+                              margin_px + int(5 / 25.4 * dpi), dpi, geomag)
 
             pages.append(page)
 
@@ -363,10 +374,10 @@ def _draw_tools(draw: ImageDraw.ImageDraw, drawings: list,
                 center_lat: float, center_lon: float,
                 ground_w: float, ground_h: float,
                 img_w: int, img_h: int, dpi: int) -> None:
-    """Render tool drawings (ruler, protractor, line, compass) on a map image."""
+    """Render tool drawings (ruler, protractor, line, route, compass)."""
     lw = max(2, dpi // 150)
     _TC = {"ruler": "#dc2626", "protractor": "#7c3aed",
-           "line": "#0891b2", "compass": "#ea580c"}
+           "line": "#0891b2", "compass": "#ea580c", "route": "#16a34a"}
 
     for drw in drawings:
         dtype = drw.get("type", "")
@@ -396,7 +407,7 @@ def _draw_tools(draw: ImageDraw.ImageDraw, drawings: list,
                     r2 = max(3, dpi // 72)
                     draw.ellipse([p[0]-r2, p[1]-r2, p[0]+r2, p[1]+r2], fill=color)
 
-        elif dtype == "line":
+        elif dtype in {"line", "route"}:
             pts = drw.get("points", [])
             if len(pts) >= 2:
                 pxs = [latlon_to_pixel(p[0], p[1], center_lat, center_lon,
@@ -404,9 +415,10 @@ def _draw_tools(draw: ImageDraw.ImageDraw, drawings: list,
                        for p in pts]
                 for i in range(1, len(pxs)):
                     draw.line([pxs[i-1], pxs[i]], fill=color, width=lw)
-                for p in pxs:
-                    r2 = max(3, dpi // 72)
-                    draw.ellipse([p[0]-r2, p[1]-r2, p[0]+r2, p[1]+r2], fill=color)
+                if dtype == "line":
+                    for p in pxs:
+                        r2 = max(3, dpi // 72)
+                        draw.ellipse([p[0]-r2, p[1]-r2, p[0]+r2, p[1]+r2], fill=color)
 
         elif dtype == "compass":
             cc = drw.get("center", [0, 0])
@@ -476,56 +488,205 @@ def _clamp(v: float, lo: float, hi: float) -> int:
     return int(max(lo, min(hi, v)))
 
 
+def _nice_round(value: float) -> float:
+    """Pick a 1/2/5 × 10^n value <= ``value``."""
+    if value <= 0:
+        return 1.0
+    exp = math.floor(math.log10(value))
+    base = 10 ** exp
+    for mult in (5, 2, 1):
+        cand = mult * base
+        if cand <= value:
+            return cand
+    return base
+
+
 def _draw_scale_bar(draw: ImageDraw.ImageDraw, x: int, y: int,
                     scale: int, dpi: int) -> None:
-    """Alternating black/white scale bar — 50 mm on paper."""
-    bar_mm = 50
-    bar_px = int(round(bar_mm / 25.4 * dpi))
-    ground_m = bar_mm * scale / 1000.0
-    seg = bar_px // 2
+    """Graphic metric scale bar: 4 alternating segments of a "nice" length.
 
-    draw.rectangle([x, y, x + seg, y + int(4 / 25.4 * dpi)],
-                   fill=(0, 0, 0))
-    draw.rectangle([x + seg, y, x + bar_px, y + int(4 / 25.4 * dpi)],
-                   fill=(255, 255, 255), outline=(0, 0, 0))
+    The bar's total ground length is the largest 1/2/5 × 10^n value that
+    fits within ~70 mm on paper, so the printout always shows e.g. 1 km
+    or 500 m or 200 m segments — never an awkward 437 m bar.
+    """
+    target_mm = 70
+    target_ground = target_mm * scale / 1000.0
+    total_m = _nice_round(target_ground)
+    total_mm = total_m * 1000.0 / scale
+    total_px = int(round(total_mm / 25.4 * dpi))
+    h_px = int(round(3 / 25.4 * dpi))
+    n_seg = 4
+    seg_px = total_px / n_seg
 
-    fnt = _font(max(14, dpi * 8 // 72))   # ~8 pt at print
-    ty = y + int(5 / 25.4 * dpi)
-    draw.text((x, ty), "0", fill=(0, 0, 0), font=fnt)
+    # Alternating fills
+    for i in range(n_seg):
+        x0 = int(round(x + i * seg_px))
+        x1 = int(round(x + (i + 1) * seg_px))
+        fill = (0, 0, 0) if i % 2 == 0 else (255, 255, 255)
+        draw.rectangle([x0, y, x1, y + h_px], fill=fill, outline=(0, 0, 0))
+    # Outer border
+    draw.rectangle([x, y, x + total_px, y + h_px], outline=(0, 0, 0), width=1)
 
-    if ground_m >= 1000:
-        lbl = f"{ground_m / 1000:.1f} km"
-    else:
-        lbl = f"{int(ground_m)} m"
-    draw.text((x + bar_px, ty), lbl, fill=(0, 0, 0), font=fnt)
+    # Tick labels at 0, mid, full
+    fnt = _font(max(12, dpi * 7 // 72))
+    ty = y + h_px + int(1 / 25.4 * dpi)
 
+    def _label(meters: float) -> str:
+        if meters >= 1000:
+            return (f"{meters / 1000:g} km")
+        return f"{int(round(meters))} m"
+
+    for frac, anchor in ((0.0, "left"), (0.5, "center"), (1.0, "right")):
+        meters = total_m * frac
+        lx = x + frac * total_px
+        s = _label(meters)
+        bbox = draw.textbbox((0, 0), s, font=fnt)
+        tw = bbox[2] - bbox[0]
+        if anchor == "center":
+            lx -= tw / 2
+        elif anchor == "right":
+            lx -= tw
+        draw.text((int(lx), ty), s, fill=(0, 0, 0), font=fnt)
+
+    # Ratio label below the ticks
+    fnt2 = _font(max(14, dpi * 8 // 72))
     draw.text((x, ty + int(5 / 25.4 * dpi)),
               f"Scale  1 : {scale:,}".replace(",", "."),
-              fill=(0, 0, 0), font=fnt)
+              fill=(0, 0, 0), font=fnt2)
 
 
-def _draw_info(draw, x, y, scale, lat, lon, grid_info, source, dpi):
-    fnt = _font(max(14, dpi * 8 // 72))   # ~8 pt at print
+def _draw_info(draw, x, y, scale, lat, lon, grid_info, source, geomag, dpi,
+               right_x=None):
+    fnt = _font(max(12, dpi * 7 // 72))   # ~7 pt at print
+    lat_dir = "N" if lat >= 0 else "S"
+    lon_dir = "E" if lon >= 0 else "W"
     lines = [
-        f"Center: {lat:.5f}°N  {abs(lon):.5f}°{'E' if lon >= 0 else 'W'}",
+        f"Center: {abs(lat):.5f}°{lat_dir}  {abs(lon):.5f}°{lon_dir}",
         f"Source: {source}",
+        f"Datum: WGS 84 (EPSG:4326)",
     ]
     if grid_info:
-        lines.append(f"Grid {GRID_SYSTEMS.get(grid_info.system, grid_info.system)} — {grid_info.zone} — EPSG:{grid_info.epsg}")
+        lines.append(
+            f"Grid: {GRID_SYSTEMS.get(grid_info.system, grid_info.system)}"
+            f" — {grid_info.zone} — EPSG:{grid_info.epsg}"
+        )
+    if geomag is not None:
+        d = geomag.declination_deg
+        c = geomag.convergence_deg
+        d_dir = "E" if d >= 0 else "W"
+        c_dir = "E" if c >= 0 else "W"
+        lines.append(
+            f"Magnetic decl.: {abs(d):.1f}°{d_dir}"
+            f"   Grid conv.: {abs(c):.1f}°{c_dir}"
+            f"   ({geomag.model}, {int(geomag.year)})"
+        )
     lines.append("Print at 100% without fit-to-page scaling")
-    for i, line in enumerate(lines):
-        draw.text((x, y + i * int(5 / 25.4 * dpi)), line,
-                  fill=(60, 60, 60), font=fnt)
+
+    line_step = int(3.8 / 25.4 * dpi)
+    fill = (60, 60, 60)
+    if right_x is None:
+        for i, line in enumerate(lines):
+            draw.text((x, y + i * line_step), line, fill=fill, font=fnt)
+        return
+
+    available_w = max(0, right_x - x)
+    gap = int(5 / 25.4 * dpi)
+    min_col_w = int(32 / 25.4 * dpi)
+    if available_w < min_col_w * 2 + gap:
+        for i, line in enumerate(lines):
+            _draw_fitted_text(draw, x, y + i * line_step, line, fnt, fill, available_w)
+        return
+
+    col_w = (available_w - gap) // 2
+    rows = math.ceil(len(lines) / 2)
+    for col, chunk in enumerate((lines[:rows], lines[rows:])):
+        col_x = x + col * (col_w + gap)
+        for row, line in enumerate(chunk):
+            _draw_fitted_text(draw, col_x, y + row * line_step,
+                              line, fnt, fill, col_w)
 
 
-def _draw_north_arrow(draw, cx, cy, dpi):
-    """Minimal north arrow."""
-    length = int(10 / 25.4 * dpi)
-    w = int(3 / 25.4 * dpi)
-    draw.polygon([(cx, cy), (cx - w, cy + length), (cx + w, cy + length)],
-                 fill=(0, 0, 0))
-    fnt = _font(max(16, dpi * 10 // 72))   # ~10 pt at print
-    draw.text((cx - w, cy - int(5 / 25.4 * dpi)), "N", fill=(0, 0, 0), font=fnt)
+def _draw_fitted_text(draw, x, y, text, font, fill, max_width):
+    """Draw text clipped with an ellipsis so it never leaves its column."""
+    if max_width <= 0:
+        return
+    if _text_width(draw, text, font) <= max_width:
+        draw.text((x, y), text, fill=fill, font=font)
+        return
+
+    ellipsis = "…"
+    if _text_width(draw, ellipsis, font) > max_width:
+        return
+
+    lo = 0
+    hi = len(text)
+    best = ellipsis
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        candidate = text[:mid].rstrip() + ellipsis
+        if _text_width(draw, candidate, font) <= max_width:
+            best = candidate
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    draw.text((x, y), best, fill=fill, font=font)
+
+
+def _text_width(draw, text, font) -> int:
+    bbox = draw.textbbox((0, 0), text, font=font)
+    return bbox[2] - bbox[0]
+
+
+def _draw_north_arrow(draw, cx, cy, dpi, geomag=None):
+    """North-arrow rosette showing true / grid / magnetic north.
+
+    True north points straight up. The grid-north arrow is rotated by the
+    grid convergence; the magnetic-north arrow by the magnetic declination.
+    """
+    length = int(11 / 25.4 * dpi)
+    half_w = int(2 / 25.4 * dpi)
+    base_y = cy + length
+
+    def _arrow(angle_deg: float, color: tuple, label: str, head: int) -> None:
+        a = math.radians(angle_deg)
+        sa = math.sin(a)
+        ca = math.cos(a)
+        # Tip = (cx, cy) rotated around (cx, base_y)
+        # i.e. arrow grows upward, then we rotate the tip about the base.
+        # Vector from base to tip = (0, -length); rotate by `angle_deg` CW
+        # (positive angle => tip leans right).
+        tip_x = cx + sa * length
+        tip_y = base_y - ca * length
+        # Base corners perpendicular to direction
+        bx_left = cx - ca * half_w
+        by_left = base_y - sa * half_w
+        bx_right = cx + ca * half_w
+        by_right = base_y + sa * half_w
+        draw.polygon([(tip_x, tip_y), (bx_left, by_left), (bx_right, by_right)],
+                     fill=color)
+        # Label near the tip
+        fnt = _font(max(12, dpi * 7 // 72))
+        lx = tip_x + sa * head - half_w
+        ly = tip_y - ca * head - int(3 / 25.4 * dpi)
+        draw.text((lx, ly), label, fill=color, font=fnt)
+
+    # Centre point
+    r = max(2, int(0.8 / 25.4 * dpi))
+    draw.ellipse([cx - r, base_y - r, cx + r, base_y + r], fill=(0, 0, 0))
+
+    # True north (always vertical)
+    _arrow(0.0, (0, 0, 0), "N", int(2 / 25.4 * dpi))
+
+    if geomag is not None:
+        # Grid north — small offset, blue. Positive convergence = grid north
+        # is rotated CCW from true north (i.e. tip leans left/west of N).
+        if abs(geomag.convergence_deg) > 0.05:
+            _arrow(-geomag.convergence_deg, (0, 60, 200), "G",
+                   int(2 / 25.4 * dpi))
+        # Magnetic north — red. Positive declination (E) → tip leans right.
+        if abs(geomag.declination_deg) > 0.05:
+            _arrow(geomag.declination_deg, (200, 30, 30), "M",
+                   int(2 / 25.4 * dpi))
 
 
 def _hex_to_rgb(h: str) -> tuple[int, int, int]:

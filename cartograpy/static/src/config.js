@@ -3,7 +3,7 @@
 // ==============================================================
 import { map, status, $scale, $paper, $sheets, $landscape, $source,
          $dpi, $mapTextScale, $gridType, $gridScale, $fullLabels,
-         $btnExport } from './core.js';
+         $bearing, $btnExport } from './core.js';
 import { state, waypoints, searchHistory, tileLayers,
          selectedOverlays, MAX_HISTORY } from './state.js';
 import { t, loadLanguage } from './i18n.js';
@@ -20,6 +20,7 @@ const CONFIG_FIELDS = {
   source:       { el: () => $source,       type: 'value' },
   dpi:          { el: () => $dpi,          type: 'value' },
   mapTextScale: { el: () => $mapTextScale, type: 'value' },
+  bearing:      { el: () => $bearing,      type: 'value' },
   gridType:     { el: () => $gridType,     type: 'value' },
   gridScale:    { el: () => $gridScale,    type: 'value' },
   fullLabels:   { el: () => $fullLabels,   type: 'checked' },
@@ -62,6 +63,10 @@ export async function loadConfig() {
       if (cfg[k] !== undefined) def.el()[def.type] = cfg[k];
     }
     if (cfg.lat && cfg.lon) map.setView([cfg.lat, cfg.lon], cfg.zoom || 13);
+    const bearing = Number(cfg.bearing);
+    if (Number.isFinite(bearing) && typeof map.setBearing === 'function') {
+      map.setBearing(((Math.round(bearing) % 360) + 360) % 360);
+    }
 
     // Sync tile layer to saved source.
     const src = $source.value;
@@ -97,11 +102,12 @@ export async function loadConfig() {
 
 // ---------------- Auto-save listeners (idempotent) ----------------
 export function attachAutoSaveListeners() {
-  [$scale, $paper, $sheets, $source, $dpi, $mapTextScale, $gridType, $gridScale]
+  [$scale, $paper, $sheets, $source, $dpi, $mapTextScale, $bearing, $gridType, $gridScale]
     .forEach(el => el.addEventListener('change', scheduleSaveConfig));
   $sheets.addEventListener('input', scheduleSaveConfig);
   [$landscape, $fullLabels].forEach(el => el.addEventListener('change', scheduleSaveConfig));
   map.on('moveend', scheduleSaveConfig);
+  map.on('rotate', scheduleSaveConfig);
 }
 
 // ---------------- OWM API key handling ----------------

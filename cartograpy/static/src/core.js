@@ -5,8 +5,16 @@
 // references without going through `main.js` (avoids circular imports).
 
 // Leaflet instance + the layer group used by all waypoint markers.
-export const map = L.map('map', { zoomControl: false, attributionControl: true })
-                    .setView([44.49, 11.34], 13);
+// `rotate: true` (provided by leaflet-rotate) enables shift-drag rotation
+// and exposes ``map.setBearing()`` / ``map.getBearing()``. Falls back to a
+// non-rotating map if the plugin is unavailable.
+export const map = L.map('map', {
+  zoomControl: false,
+  attributionControl: true,
+  rotate: true,
+  rotateControl: false,           // we render our own compass control
+  bearing: 0,
+}).setView([44.49, 11.34], 13);
 
 export const wpMarkerLayer = L.layerGroup();
 wpMarkerLayer.addTo(map);
@@ -27,6 +35,7 @@ export const $gridScale    = $('gridScale');
 export const $fullLabels   = $('fullLabels');
 export const $dpi          = $('dpi');
 export const $mapTextScale = $('mapTextScale');
+export const $bearing      = $('bearing');
 export const $status       = $('status');
 export const $results      = $('results');
 export const $resList      = $('resultsList');
@@ -36,6 +45,7 @@ export const $btnRuler      = $('btnRuler');
 export const $btnProtractor = $('btnProtractor');
 export const $btnLine       = $('btnLine');
 export const $btnCompass    = $('btnCompass');
+export const $btnRoute      = $('btnRoute');
 export const $btnWpAddOnMap = $('btnWpAddOnMap');
 
 export const $mobileToolBar = $('mobileToolBar');

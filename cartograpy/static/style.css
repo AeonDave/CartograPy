@@ -298,7 +298,8 @@ html { touch-action: manipulation; }
   #searchSuggestions .sg-item { padding:10px 12px; font-size:14px; }
 
   /* Tool history items */
-  #rulerHistory > div, #protractorHistory > div, #lineHistory > div, #compassHistory > div {
+  #rulerHistory > div, #protractorHistory > div, #lineHistory > div,
+  #compassHistory > div, #routeHistory > div {
     padding:6px 8px; font-size:13px; min-height:36px; }
 }
 
@@ -308,4 +309,35 @@ html { touch-action: manipulation; }
   body:not(.sidebar-hidden) #toggleSidebar { display:none; }
   .close-sidebar-btn { display:inline-flex !important; }
   #weatherCard { top:54px; right:5px; width:calc(100vw - 10px); }
+}
+
+/* Compass control (rotation indicator) */
+.compass-control {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.compass-control .compass-btn {
+  display: block;
+  width: 32px;
+  height: 32px;
+  padding: 2px;
+  cursor: grab;
+  touch-action: none;
+}
+.compass-control .compass-btn.rotating { cursor: grabbing; }
+.compass-control .compass-svg {
+  display: block;
+  transition: transform 0.15s ease;
+  transform-origin: 50% 50%;
+}
+
+/* Route draft point list */
+.route-draft-list { margin-top: 5px; }
+.route-draft-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  padding: 2px 0;
 }

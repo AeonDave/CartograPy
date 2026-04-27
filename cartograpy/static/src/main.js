@@ -6,7 +6,7 @@ import {
   $search, $scale, $paper, $sheets, $landscape, $source,
   $gridType, $gridScale, $fullLabels, $dpi, $mapTextScale,
   $results, $resList, $btnExport,
-  $btnRuler, $btnProtractor, $btnLine, $btnCompass, $btnWpAddOnMap,
+  $btnRuler, $btnProtractor, $btnLine, $btnCompass, $btnRoute, $btnWpAddOnMap,
   $mtbDone, $mtbUndo, $mtbCancel,
   closeSidebarMobile,
 } from './core.js';
@@ -26,6 +26,11 @@ import { populateOverlayPanel, setOverlayDefs,
          buildTileOverlayDef } from './overlays.js';
 import { loadConfig, exportPDF,
          attachAutoSaveListeners, setupOwmKeyUI } from './config.js';
+import { setupGpxUI } from './gpx.js';
+import { initMagDisplay } from './geomag.js';
+import { routeFinish, routeUndo, setupRouteUI } from './route.js';
+import { initSnap } from './snap.js';
+import { initCompassControl } from './compass.js';
 
 // ---------------- Sidebar ----------------
 document.getElementById('toggleSidebar').addEventListener('click', () => {
@@ -101,15 +106,18 @@ $btnRuler.addEventListener('click', () => toggleTool('ruler'));
 $btnProtractor.addEventListener('click', () => toggleTool('protractor'));
 $btnLine.addEventListener('click', () => toggleTool('line'));
 $btnCompass.addEventListener('click', () => toggleTool('compass'));
+$btnRoute.addEventListener('click', () => toggleTool('route'));
 document.getElementById('btnLineUndo').addEventListener('click', lineUndo);
 
 // Mobile tool bar
 $mtbDone.addEventListener('click', () => {
   if (state.activeTool === 'line') lineFinish();
+  if (state.activeTool === 'route') routeFinish();
   updateMobileToolBar();
 });
 $mtbUndo.addEventListener('click', () => {
   if (state.activeTool === 'line') lineUndo();
+  if (state.activeTool === 'route') routeUndo();
   updateMobileToolBar();
 });
 $mtbCancel.addEventListener('click', deactivateAllTools);
@@ -305,9 +313,13 @@ function buildSourceOption(s) {
 buildIconColorGrids();
 populateOverlayPanel();
 renderWaypointList();
+setupGpxUI();
+setupRouteUI();
+initSnap();
+initCompassControl();
 
 loadSources()
   .then(() => loadLanguage('en'))
   .then(() => populateOverlayPanel())
   .then(() => loadConfig())
-  .then(() => setTimeout(updateOverlays, 500));
+  .then(() => { initMagDisplay(); setTimeout(updateOverlays, 500); });
