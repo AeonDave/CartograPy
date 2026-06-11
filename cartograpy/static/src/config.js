@@ -39,6 +39,7 @@ const CONFIG_FIELDS = {
   trafficTrainProvider: { el: () => document.getElementById('trafficTrainProvider'), type: 'value' },
   trafficRefreshSec: { el: () => document.getElementById('trafficRefreshSec'), type: 'value' },
   language:     { el: () => document.getElementById('language'),  type: 'value' },
+  theme:        { el: () => document.getElementById('theme'),     type: 'value' },
   owmApiKey:    { el: () => document.getElementById('owmApiKey'), type: 'value' },
   aishubUsername: { el: () => document.getElementById('aishubUsername'), type: 'value' },
   gtfsRealtimeUrl: { el: () => document.getElementById('gtfsRealtimeUrl'), type: 'value' },
@@ -48,7 +49,8 @@ function gatherConfig() {
   const c = map.getCenter();
   const cfg = { lat: c.lat, lon: c.lng, zoom: map.getZoom() };
   for (const [k, def] of Object.entries(CONFIG_FIELDS)) {
-    cfg[k] = def.el()[def.type];
+    const el = def.el();
+    if (el) cfg[k] = el[def.type];   // themes may omit optional elements
   }
   cfg.searchHistory = searchHistory.slice(0, MAX_HISTORY);
   cfg.overlays = Array.from(selectedOverlays);
@@ -76,7 +78,8 @@ export async function loadConfig() {
     const cfg = await res.json();
     if (!cfg || !cfg.scale) return;
     for (const [k, def] of Object.entries(CONFIG_FIELDS)) {
-      if (cfg[k] !== undefined) def.el()[def.type] = cfg[k];
+      const el = def.el();
+      if (el && cfg[k] !== undefined) el[def.type] = cfg[k];
     }
     if (cfg.lat && cfg.lon) map.setView([cfg.lat, cfg.lon], cfg.zoom || 13);
     const bearing = Number(cfg.bearing);
@@ -141,6 +144,32 @@ export function attachAutoSaveListeners() {
   [$landscape, $fullLabels].forEach(el => el.addEventListener('change', scheduleSaveConfig));
   map.on('moveend', scheduleSaveConfig);
   map.on('rotate', scheduleSaveConfig);
+}
+
+// ---------------- Themes ----------------
+// Populate the #theme select from /api/themes. Switching theme persists the
+// config immediately and reloads the page so the new frontend takes over.
+export async function loadThemes() {
+  const sel = document.getElementById('theme');
+  if (!sel) return;
+  try {
+    const res = await fetch('/api/themes');
+    if (!res.ok) return;
+    const data = await res.json();
+    sel.innerHTML = '';
+    for (const th of data.themes || []) {
+      const opt = document.createElement('option');
+      opt.value = th.id;
+      opt.textContent = th.name || th.id;
+      if (th.description) opt.title = th.description;
+      sel.appendChild(opt);
+    }
+    if (data.active) sel.value = data.active;
+    sel.addEventListener('change', async () => {
+      await saveConfig();
+      location.reload();
+    });
+  } catch (e) {}
 }
 
 // ---------------- OWM API key handling ----------------

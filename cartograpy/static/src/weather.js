@@ -131,15 +131,48 @@ export async function fetchWeather(lat, lon) {
   const date = $weatherDate.value;
   let url = `/api/weather?lat=${lat}&lon=${lon}`;
   if (date) url += `&date=${date}`;
+  renderWeatherLoading();
+  $weatherCard.classList.add('visible');
   try {
     const res = await fetch(url);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     state.lastWeatherData = data;
     renderWeather(data);
-    $weatherCard.classList.add('visible');
   } catch (e) {
     console.error('Weather fetch error:', e);
+    renderWeatherError();
+  }
+}
+
+function renderWeatherLoading() {
+  $weatherIcon.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+  $weatherTemp.textContent = '…';
+  const $feelsLike = document.getElementById('weatherFeelsLike');
+  if ($feelsLike) $feelsLike.textContent = '';
+  $weatherLabel.textContent = t('weather.loading');
+  const $stats = document.getElementById('weatherStats');
+  if ($stats) $stats.innerHTML = '';
+  $weatherBar.innerHTML = '';
+  $weatherLegend.innerHTML = '';
+  $weatherHourIndicator.classList.remove('visible');
+  $weatherNowIndicator.classList.remove('visible');
+}
+
+function renderWeatherError() {
+  $weatherIcon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+  $weatherTemp.textContent = '—';
+  $weatherLabel.textContent = t('weather.error');
+  const $stats = document.getElementById('weatherStats');
+  if ($stats) {
+    $stats.innerHTML = '';
+    const retry = document.createElement('button');
+    retry.className = 'weather-retry';
+    retry.innerHTML = `<i class="fa-solid fa-rotate-right"></i> ${t('weather.retry')}`;
+    retry.addEventListener('click', () => {
+      if (state.weatherLat !== null) fetchWeather(state.weatherLat, state.weatherLon);
+    });
+    $stats.appendChild(retry);
   }
 }
 

@@ -19,7 +19,6 @@ from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
-import urllib.request
 from io import BytesIO
 
 from .elevation import densify, fetch_profile, profile_stats
@@ -34,9 +33,12 @@ from .runtime import get_data_dir
 from .tiles import TileCache, TILE_SOURCES
 from .traffic import BoundingBox, TrafficConfigError, TrafficError, query_live_traffic
 from .utils import PAPER_SIZES, SCALES, auto_grid_spacing, compute_sheet_layout
+from .weather import WeatherError, get_forecast
 
 _HERE = Path(__file__).resolve().parent
 _STATIC = _HERE / "static"
+_THEMES = _HERE / "themes"
+_DEFAULT_THEME = "classic"
 _DATA = get_data_dir()
 _CONFIG_FILE = _DATA / "config.json"
 _WP_DIR = _DATA / "waypoints"
@@ -117,6 +119,79 @@ def _sanitize_filename(name: str) -> str:
     return _SAFE_NAME_RE.sub('_', name)[:80]
 
 
+# ---------------------------------------------------------------------------
+# Themes — each theme is a complete frontend in cartograpy/themes/<id>/
+# (theme.json + index.html + style.css [+ theme.js + assets]). The shared
+# engine (app.js bundle, lang/) stays in static/. See themes/CONTRACT.md.
+# ---------------------------------------------------------------------------
+
+_THEME_ID_RE = re.compile(r"^[a-z0-9_-]{1,40}$")
+
+_MIME_TYPES = {
+    ".html": "text/html; charset=utf-8",
+    ".css":  "text/css; charset=utf-8",
+    ".js":   "application/javascript; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
+    ".png":  "image/png",
+    ".jpg":  "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".svg":  "image/svg+xml",
+    ".webp": "image/webp",
+    ".ico":  "image/x-icon",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+    ".ttf":  "font/ttf",
+}
+
+
+def list_themes() -> list[dict]:
+    """Return metadata for every valid theme directory.
+
+    A directory qualifies if it contains both ``theme.json`` and
+    ``index.html``. Invalid/malformed themes are skipped silently.
+    """
+    themes: list[dict] = []
+    if not _THEMES.is_dir():
+        return themes
+    for d in sorted(_THEMES.iterdir()):
+        if not d.is_dir() or not _THEME_ID_RE.match(d.name):
+            continue
+        meta_file = d / "theme.json"
+        if not meta_file.is_file() or not (d / "index.html").is_file():
+            continue
+        try:
+            meta = json.loads(meta_file.read_text("utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        themes.append({
+            "id": d.name,
+            "name": str(meta.get("name") or d.name),
+            "description": str(meta.get("description") or ""),
+            "version": str(meta.get("version") or ""),
+            "author": str(meta.get("author") or ""),
+        })
+    return themes
+
+
+def _read_config() -> dict:
+    if _CONFIG_FILE.is_file():
+        try:
+            cfg = json.loads(_CONFIG_FILE.read_text("utf-8"))
+            if isinstance(cfg, dict):
+                return cfg
+        except (json.JSONDecodeError, OSError):
+            pass
+    return {}
+
+
+def get_active_theme() -> str:
+    """Return the configured theme id, falling back to the default."""
+    theme = str(_read_config().get("theme") or _DEFAULT_THEME)
+    if not _THEME_ID_RE.match(theme) or not (_THEMES / theme / "index.html").is_file():
+        theme = _DEFAULT_THEME
+    return theme
+
+
 def create_server(host: str = "127.0.0.1", port: int = 8271) -> tuple[ThreadingHTTPServer, str]:
     """Create the configured HTTP server and return it with its local URL."""
     tc = TileCache()
@@ -150,6 +225,14 @@ class _Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         # quieter logs
         pass
+
+    def handle_one_request(self):
+        # Browsers abort in-flight tile/asset requests on every map pan;
+        # that is normal operation, not an error worth a traceback.
+        try:
+            super().handle_one_request()
+        except (ConnectionAbortedError, ConnectionResetError, BrokenPipeError):
+            self.close_connection = True
 
     # ------------------------------------------------------------------
     # Request validation (DNS rebinding / CSRF)
@@ -186,7 +269,13 @@ class _Handler(BaseHTTPRequestHandler):
         qs = parse_qs(parsed.query)
 
         if path == "/" or path == "/index.html":
-            self._serve_file(_STATIC / "index.html", "text/html; charset=utf-8")
+            theme_dir = _THEMES / get_active_theme()
+            self._serve_file(theme_dir / "index.html", "text/html; charset=utf-8",
+                             cache="no-cache")
+        elif path.startswith("/theme/"):
+            self._handle_theme_asset(path[len("/theme/"):])
+        elif path == "/api/themes":
+            self._json({"themes": list_themes(), "active": get_active_theme()})
         elif path == "/api/search":
             self._handle_search(qs)
         elif path == "/api/suggest":
@@ -220,12 +309,31 @@ class _Handler(BaseHTTPRequestHandler):
         elif path.startswith("/lang/") and path.endswith(".json"):
             lang_file = _STATIC / "lang" / Path(path[6:]).name
             self._serve_file(lang_file, "application/json; charset=utf-8")
-        elif path == "/style.css":
-            self._serve_file(_STATIC / "style.css", "text/css; charset=utf-8")
         elif path == "/app.js":
-            self._serve_file(_STATIC / "app.js", "application/javascript; charset=utf-8")
+            self._serve_file(_STATIC / "app.js", "application/javascript; charset=utf-8",
+                             cache="no-cache")
+        elif path == "/favicon.ico":
+            from .runtime import get_resource_path
+            self._serve_file(get_resource_path("img", "logo.png"), "image/png",
+                             cache="public, max-age=86400")
         else:
             self._404()
+
+    def _handle_theme_asset(self, rel: str):
+        """Serve a file from the ACTIVE theme directory (path-traversal safe)."""
+        theme_dir = (_THEMES / get_active_theme()).resolve()
+        try:
+            target = (theme_dir / unquote(rel)).resolve()
+            target.relative_to(theme_dir)  # raises ValueError on traversal
+        except (ValueError, OSError):
+            self._404()
+            return
+        ctype = _MIME_TYPES.get(target.suffix.lower())
+        if ctype is None:
+            self._404()
+            return
+        # Theme files may change when the user switches/edits themes.
+        self._serve_file(target, ctype, cache="no-cache")
 
     def do_POST(self):
         if not self._request_allowed(check_origin=True):
@@ -536,7 +644,8 @@ class _Handler(BaseHTTPRequestHandler):
             self._json({"error": str(exc)}, 400)
 
     def _handle_weather(self, qs):
-        """Proxy hourly weather forecast from Open-Meteo (free, no API key)."""
+        """Hourly forecast via :mod:`cartograpy.weather` (Open-Meteo with
+        automatic MET Norway fallback, 10-minute TTL cache)."""
         try:
             lat = float(qs["lat"][0])
             lon = float(qs["lon"][0])
@@ -544,32 +653,10 @@ class _Handler(BaseHTTPRequestHandler):
         except (KeyError, ValueError, IndexError):
             self._json({"error": "missing lat/lon"}, 400)
             return
-
-        # Build Open-Meteo URL
-        params = (
-            f"latitude={lat}&longitude={lon}"
-            f"&hourly=temperature_2m,apparent_temperature,weathercode"
-            f",relativehumidity_2m,precipitation_probability"
-            f",precipitation,windspeed_10m,windgusts_10m"
-            f",winddirection_10m,uv_index"
-            f"&timezone=auto"
-        )
-        if date:
-            params += f"&start_date={date}&end_date={date}"
-        else:
-            params += "&forecast_days=1"
-
-        url = f"https://api.open-meteo.com/v1/forecast?{params}"
-        req = urllib.request.Request(
-            url,
-            headers={"User-Agent": "CartograPy/1.0 (weather-widget)"},
-        )
         try:
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                data = json.loads(resp.read().decode())
-            self._json(data)
-        except Exception as exc:
-            self._json({"error": str(exc)}, 502)
+            self._json(get_forecast(lat, lon, date))
+        except WeatherError as exc:
+            self._json({"error": str(exc)}, exc.status)
 
     def _handle_live_traffic(self, qs):
         """Return normalized live traffic markers for the visible map bbox."""
@@ -620,7 +707,7 @@ class _Handler(BaseHTTPRequestHandler):
                    "trafficVesselEnabled", "trafficVesselProvider",
                    "trafficTrainEnabled", "trafficTrainProvider",
                    "trafficRefreshSec", "aishubUsername", "gtfsRealtimeUrl",
-                   "lat", "lon", "zoom", "language", "sheets",
+                   "lat", "lon", "zoom", "language", "sheets", "theme",
                    "owmApiKey", "searchHistory", "overlays"}
         clean = {k: v for k, v in params.items() if k in allowed}
         with _IO_LOCK:
@@ -795,7 +882,7 @@ class _Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _serve_file(self, path: Path, content_type: str):
+    def _serve_file(self, path: Path, content_type: str, cache: str | None = None):
         if not path.is_file():
             self._404()
             return
@@ -803,6 +890,8 @@ class _Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
+        if cache:
+            self.send_header("Cache-Control", cache)
         self.end_headers()
         self.wfile.write(data)
 

@@ -98,9 +98,7 @@ export async function showElevationProfile(container, points) {
 
   const panel = document.createElement('div');
   panel.className = 'elev-panel';
-  panel.style.cssText = 'flex:1 1 100%;margin-top:4px;padding:4px 6px;'
-    + 'background:#fff;border:1px solid #e2e8f0;border-radius:4px;';
-  panel.innerHTML = `<div style="font-size:11px;color:#94a3b8;">${t('elev.loading')}…</div>`;
+  panel.innerHTML = `<div class="elev-note">${t('elev.loading')}…</div>`;
   container.appendChild(panel);
 
   try {
@@ -113,7 +111,6 @@ export async function showElevationProfile(container, points) {
     if (data.error) throw new Error(data.error);
     panel.innerHTML = _renderChart(data.profile, data.stats);
   } catch (e) {
-    panel.innerHTML = `<div style="font-size:11px;color:#dc2626;">`
-      + `${t('elev.error')}: ${e.message}</div>`;
+    panel.innerHTML = `<div class="elev-error">${t('elev.error')}: ${e.message}</div>`;
   }
 }

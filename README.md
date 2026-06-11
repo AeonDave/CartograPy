@@ -37,6 +37,9 @@ as PDF — with reference grid, waypoints, and measurement tools — printable a
   XYZ and OGC WMS handled identically
 - **Multi-language UI** — English, Italian, Chinese; add a language by dropping
   a JSON file into [cartograpy/static/lang/](cartograpy/static/lang)
+- **Themes** — each theme is a complete frontend (markup + stylesheet + chrome
+  script) in [cartograpy/themes/](cartograpy/themes); ships with **Classic**
+  (light) and **Tactical** (field instrument console); switch from the UI
 - **Two interfaces** — Leaflet web app (default) and an alternative tkinter GUI
 
 ![Tools](img/tools.png)
@@ -191,6 +194,18 @@ pip install -r requirements-build.txt
 python -m cartograpy.launcher
 ```
 
+## Themes
+
+A theme is a **complete frontend**: `index.html` + `style.css` (+ optional
+`theme.js` and assets) in `cartograpy/themes/<id>/`, selected from the UI and
+persisted in `data/config.json` (`theme` key). The application engine
+(`static/app.js`, `static/lang/`) is shared by all themes.
+
+To create one, copy `cartograpy/themes/classic/`, keep every element id
+required by the engine, and restyle freely. The full contract (REST API, DOM
+ids, CSS hooks, `theme.js` API) is documented in
+[cartograpy/themes/CONTRACT.md](cartograpy/themes/CONTRACT.md).
+
 ## Adding a language
 
 1. Copy [cartograpy/static/lang/en.json](cartograpy/static/lang/en.json) →
@@ -223,6 +238,7 @@ get the up-to-date UI.
 ```
 cartograpy/
   server.py        HTTP server + REST API (default interface)
+  themes/          complete frontends: classic/, tactical/ (+ CONTRACT.md)
   app.py           tkinter alternative GUI
   launcher.py      Desktop controller window for the Windows build
   tiles.py         TileCache + TILE_SOURCES (XYZ and WMS)
@@ -237,10 +253,8 @@ cartograpy/
   export.py        PDF generator (true-scale)
   utils.py         Shared math and constants
   static/
-    index.html     Single-page Leaflet UI
-    app.js         esbuild bundle (generated)
-    style.css      UI styles
-    lang/          Translation JSON files
+    app.js         esbuild bundle (generated) — shared engine
+    lang/          Translation JSON files (shared)
     src/           ES modules — edit these, then `npm run build`
 ```
 

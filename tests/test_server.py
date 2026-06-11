@@ -108,3 +108,110 @@ class TestFileEndpoints:
     def test_wp_load_missing_is_404(self, server_url):
         code, _ = _get(f"{server_url}/api/waypoints/load?name=__nope__")
         assert code == 404
+
+
+class TestWeatherProxy:
+    """Weather proxy: TTL cache, MET Norway fallback, no-retry on 429.
+
+    Uses requests as HTTP client because urllib.request.urlopen is
+    monkeypatched server-side.
+    """
+
+    @staticmethod
+    def _fake_resp(body: bytes):
+        class _R:
+            def read(self):
+                return body
+            def __enter__(self):
+                return self
+            def __exit__(self, *a):
+                return False
+        return _R()
+
+    def test_upstream_called_once_then_cached(self, server_url, monkeypatch):
+        import requests
+        from cartograpy import weather as wx
+
+        calls = {"n": 0}
+
+        def fake_urlopen(req, timeout=0):
+            calls["n"] += 1
+            return self._fake_resp(b'{"hourly": {"temperature_2m": [1, 2, 3]}}')
+
+        monkeypatch.setattr(wx.urllib.request, "urlopen", fake_urlopen)
+        wx._CACHE.clear()
+
+        r1 = requests.get(f"{server_url}/api/weather?lat=44.1&lon=7.1", timeout=10)
+        r2 = requests.get(f"{server_url}/api/weather?lat=44.1004&lon=7.1004", timeout=10)
+        assert r1.status_code == 200 and r2.status_code == 200
+        assert r1.json()["hourly"]["temperature_2m"] == [1, 2, 3]
+        assert r1.json()["source"] == "open-meteo"
+        assert calls["n"] == 1  # second request served from cache (~1 km cell)
+
+    def test_429_falls_back_to_met_no(self, server_url, monkeypatch):
+        import io
+        import json as _json
+        import requests
+        import urllib.error
+        from cartograpy import weather as wx
+
+        calls = {"om": 0, "met": 0}
+        met_payload = {
+            "properties": {"timeseries": [
+                {
+                    "time": "2099-01-01T11:00:00Z",
+                    "data": {
+                        "instant": {"details": {
+                            "air_temperature": 5.0, "relative_humidity": 80.0,
+                            "wind_speed": 2.0, "wind_from_direction": 180.0,
+                        }},
+                        "next_1_hours": {
+                            "summary": {"symbol_code": "snow"},
+                            "details": {"precipitation_amount": 0.4},
+                        },
+                    },
+                },
+            ]},
+        }
+
+        def fake_urlopen(req, timeout=0):
+            if "open-meteo" in req.full_url:
+                calls["om"] += 1
+                raise urllib.error.HTTPError(
+                    req.full_url, 429, "Too Many", {}, io.BytesIO(b""))
+            calls["met"] += 1
+            return self._fake_resp(_json.dumps(met_payload).encode())
+
+        monkeypatch.setattr(wx.urllib.request, "urlopen", fake_urlopen)
+        wx._CACHE.clear()
+
+        r = requests.get(
+            f"{server_url}/api/weather?lat=44.2&lon=7.2&date=2099-01-01",
+            timeout=10)
+        assert r.status_code == 200
+        data = r.json()
+        assert data["source"] == "met.no"
+        assert calls["om"] == 1      # 429 is not retried
+        assert calls["met"] == 1
+        hourly = data["hourly"]
+        assert len(hourly["temperature_2m"]) == 24
+        # 11:00 UTC at lon 7.2 → UTC+0 ... +1; value present and gap-filled
+        assert 5.0 in hourly["temperature_2m"]
+        assert all(v == 5.0 for v in hourly["temperature_2m"])  # fills
+        assert 73 in hourly["weathercode"]                      # snow → WMO 73
+        assert hourly["windspeed_10m"][12] == 7.2               # 2 m/s → km/h
+        assert hourly["apparent_temperature"] == []             # not provided
+
+    def test_both_providers_down_is_502(self, server_url, monkeypatch):
+        import requests
+        from cartograpy import weather as wx
+
+        def fake_urlopen(req, timeout=0):
+            raise TimeoutError("dead")
+
+        monkeypatch.setattr(wx.urllib.request, "urlopen", fake_urlopen)
+        wx._CACHE.clear()
+
+        r = requests.get(f"{server_url}/api/weather?lat=44.3&lon=7.3", timeout=10)
+        assert r.status_code == 502
+        assert "unavailable" in r.json()["error"]

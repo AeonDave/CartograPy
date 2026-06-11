@@ -33,9 +33,12 @@ def main() -> None:
 
     root = Path(__file__).resolve().parent
     static_dir = root / "cartograpy" / "static"
+    themes_dir = root / "cartograpy" / "themes"
     logo_path = root / "img" / "logo.png"
     if not static_dir.is_dir():
         raise SystemExit(f"Static directory not found: {static_dir}")
+    if not themes_dir.is_dir():
+        raise SystemExit(f"Themes directory not found: {themes_dir}")
     if not logo_path.is_file():
         raise SystemExit(f"Logo file not found: {logo_path}")
 
@@ -57,6 +60,8 @@ def main() -> None:
         "pystray._win32",
         "--add-data",
         f"{static_dir};cartograpy/static",
+        "--add-data",
+        f"{themes_dir};cartograpy/themes",
         "--add-data",
         f"{logo_path};img",
         str(root / "cartograpy" / "launcher.py"),

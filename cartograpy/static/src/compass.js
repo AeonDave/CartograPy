@@ -65,21 +65,51 @@ export function initCompassControl() {
   }
   _initBearingInput();
 
+  // Build the rose markup once: ring, degree ticks, cardinals, needle.
+  // Geometry only — every colour comes from theme CSS classes so each
+  // theme can restyle the instrument (see themes/CONTRACT.md §3).
+  function _roseSvg() {
+    let ticks = '';
+    for (let a = 0; a < 360; a += 15) {
+      const main = a % 90 === 0;
+      const mid = !main && a % 45 === 0;
+      const r1 = 33;
+      const r0 = main ? 26.5 : (mid ? 28.5 : 30.5);
+      const s = Math.sin(a * Math.PI / 180);
+      const c = Math.cos(a * Math.PI / 180);
+      ticks += `<line x1="${(36 + s * r0).toFixed(2)}" y1="${(36 - c * r0).toFixed(2)}"
+                      x2="${(36 + s * r1).toFixed(2)}" y2="${(36 - c * r1).toFixed(2)}"
+                      class="${main ? 'ct-main' : 'ct'}"/>`;
+    }
+    const card = (label, a, cls) => {
+      const s = Math.sin(a * Math.PI / 180);
+      const c = Math.cos(a * Math.PI / 180);
+      return `<text x="${(36 + s * 21).toFixed(2)}" y="${(36 - c * 21 + 3.2).toFixed(2)}"
+                    text-anchor="middle" class="cardinal ${cls}">${label}</text>`;
+    };
+    return `
+      <svg viewBox="0 0 72 72" class="compass-svg">
+        <circle cx="36" cy="36" r="34" class="ring"/>
+        <circle cx="36" cy="36" r="34" fill="none" class="ring-edge"/>
+        ${ticks}
+        ${card('N', 0, 'cardinal-n')}${card('E', 90, '')}
+        ${card('S', 180, '')}${card('W', 270, '')}
+        <polygon points="36,9 40.5,36 36,31 31.5,36" class="needle-n"/>
+        <polygon points="36,63 31.5,36 36,41 40.5,36" class="needle-s"/>
+        <circle cx="36" cy="36" r="2.6" class="hub"/>
+      </svg>`;
+  }
+
   const Ctl = L.Control.extend({
     options: { position: 'topright' },
     onAdd() {
-      const wrap = L.DomUtil.create('div', 'leaflet-bar leaflet-control compass-control');
+      const wrap = L.DomUtil.create('div', 'leaflet-control compass-control');
       wrap.title = t('compass.rotateTitle');
       wrap.setAttribute('data-i18n-title', 'compass.rotateTitle');
       wrap.innerHTML = `
         <a href="#" class="compass-btn" role="button" aria-label="${t('compass.rotateAria')}">
-          <svg viewBox="0 0 36 36" width="28" height="28" class="compass-svg">
-            <circle cx="18" cy="18" r="16" fill="#fff" stroke="#475569" stroke-width="1.5"/>
-            <text x="18" y="9" text-anchor="middle" font-size="7" font-weight="700"
-                  fill="#dc2626" font-family="sans-serif">N</text>
-            <polygon points="18,5 21,18 18,16 15,18" fill="#dc2626"/>
-            <polygon points="18,31 15,18 18,20 21,18" fill="#475569"/>
-          </svg>
+          ${_roseSvg()}
+          <span class="compass-readout">000°</span>
         </a>`;
 
       this._btn = wrap.querySelector('.compass-btn');
@@ -87,10 +117,20 @@ export function initCompassControl() {
         this._btn.setAttribute('data-i18n-aria-label', 'compass.rotateAria');
       }
       this._svg = wrap.querySelector('.compass-svg');
+      this._readout = wrap.querySelector('.compass-readout');
       this._dragging = false;
       this._moved = false;
       this._ignoreClick = false;
       this._start = null;
+
+      // Angle of the pointer around the rose centre (compass convention:
+      // 0 = up, growing clockwise).
+      this._pointerAngle = (e) => {
+        const rect = this._btn.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        return Math.atan2(e.clientX - cx, cy - e.clientY) * 180 / Math.PI;
+      };
 
       this._onPointerDown = (e) => {
         if (!this._btn) return;
@@ -99,6 +139,12 @@ export function initCompassControl() {
         this._dragging = true;
         this._moved = false;
         this._start = { x: e.clientX, y: e.clientY };
+        // Dial drag: remember where the dial was grabbed so the rose
+        // FOLLOWS the pointer (no jump, no inverted rotation). The rose
+        // is rendered at -bearing, so bearing must DECREASE by the same
+        // angle the pointer sweeps clockwise.
+        this._startAngle = this._pointerAngle(e);
+        this._startBearing = map.getBearing() || 0;
         this._btn.classList.add('rotating');
         document.addEventListener('pointermove', this._onPointerMove);
         document.addEventListener('pointerup', this._onPointerUp);
@@ -112,11 +158,8 @@ export function initCompassControl() {
         const dy = e.clientY - this._start.y;
         if (!this._moved && Math.hypot(dx, dy) < 4) return;
         this._moved = true;
-        const rect = this._btn.getBoundingClientRect();
-        const cx = rect.left + rect.width / 2;
-        const cy = rect.top + rect.height / 2;
-        const angle = Math.atan2(e.clientX - cx, cy - e.clientY) * 180 / Math.PI;
-        const bearing = (angle + 360) % 360;
+        const delta = this._pointerAngle(e) - this._startAngle;
+        const bearing = ((this._startBearing - delta) % 360 + 360) % 360;
         map.setBearing(bearing);
         this._update();
       };
@@ -172,8 +215,12 @@ export function initCompassControl() {
     _update() {
       if (!this._svg) return;
       // Counter-rotate so the needle keeps pointing to true north.
-      const b = map.getBearing() || 0;
+      const b = _normalizeBearing(map.getBearing() || 0) ?? 0;
       this._svg.style.transform = `rotate(${-b}deg)`;
+      if (this._readout) {
+        this._readout.textContent = String(b).padStart(3, '0') + '°';
+        this._readout.classList.toggle('north', b === 0);
+      }
     },
   });
 

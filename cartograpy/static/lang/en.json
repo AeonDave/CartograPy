@@ -1,6 +1,5 @@
 {
   "title": "CartograPy — Print Maps to Scale",
-
   "section.search": "Search place",
   "section.map": "Map",
   "section.overlays": "Overlays",
@@ -8,8 +7,8 @@
   "section.grid": "Grid",
   "section.tools": "Tools",
   "section.waypoints": "Waypoints",
-
   "label.language": "Language:",
+  "label.theme": "Theme:",
   "label.scale": "Scale 1 :",
   "label.paper": "Paper:",
   "label.sheets": "Sheets:",
@@ -23,11 +22,9 @@
   "label.gridType": "Type:",
   "label.gridScale": "Scale %:",
   "label.fullLabels": "Full labels",
-
   "placeholder.search": "e.g. Cortina d'Ampezzo",
   "placeholder.wpCoord": "e.g. 32T 581392 5082439",
   "placeholder.wpName": "e.g. Lake Trip",
-
   "btn.export": "Export PDF",
   "btn.search": "Search",
   "btn.menu": "Menu",
@@ -47,18 +44,16 @@
   "btn.importAll": "Import all",
   "btn.confirm": "Confirm",
   "btn.close": "Close",
-
   "tool.ruler.info": "Click two points on the map to measure distance.",
   "tool.ruler.infoTouch": "Tap two points on the map to measure distance.",
-  "tool.protractor.info": "Click 3 points: first arm \u2192 vertex \u2192 second arm.",
-  "tool.protractor.infoTouch": "Tap 3 points: first arm \u2192 vertex \u2192 second arm.",
+  "tool.protractor.info": "Click 3 points: first arm → vertex → second arm.",
+  "tool.protractor.infoTouch": "Tap 3 points: first arm → vertex → second arm.",
   "tool.line.info": "Click points to draw segments. Double-click to finish.",
   "tool.line.infoTouch": "Tap points to draw segments. Tap Done to finish.",
   "tool.compass.info": "Click center, then move for radius. Click to fix.",
   "tool.compass.infoTouch": "Tap center, then tap edge to set radius.",
   "tool.route.info": "Pick 2+ points, choose a profile, then press Calculate. Routing via BRouter.",
   "tool.route.profile": "Profile:",
-
   "wp.icon": "Icon:",
   "wp.color": "Color:",
   "wp.enterCoords": "Enter coordinates",
@@ -72,12 +67,11 @@
   "wp.savedFiles": "Saved files:",
   "wp.noFiles": "No saved files",
   "wp.history": "History:",
-
-  "source.global": "\u2500\u2500 Global \u2500\u2500",
-  "source.esri": "\u2500\u2500 Esri \u2500\u2500",
-  "source.cartodb": "\u2500\u2500 CartoDB \u2500\u2500",
-  "source.marine": "\u2500\u2500 Marine \u2500\u2500",
-  "source.regional": "\u2500\u2500 Regional \u2500\u2500",
+  "source.global": "── Global ──",
+  "source.esri": "── Esri ──",
+  "source.cartodb": "── CartoDB ──",
+  "source.marine": "── Marine ──",
+  "source.regional": "── Regional ──",
   "source.emodnet": "EMODnet Bathymetry",
   "source.gebco": "GEBCO (global bathymetry)",
   "source.osmHot": "OSM HOT (Humanitarian)",
@@ -86,19 +80,16 @@
   "source.esriTopo": "Esri Topo",
   "source.esriSatellite": "Esri Satellite",
   "source.cartodbLight": "CartoDB Positron (light)",
-  "source.geopFrOrtho": "G\u00e9oportail Ortho",
+  "source.geopFrOrtho": "Géoportail Ortho",
   "source.basemapAtOrtho": "BasemapAT Ortho",
-
   "grid.none": "No grid",
   "grid.gaussBoaga": "Gauss-Boaga (Italy)",
-
-  "status.ready": "Ready \u2014 drag the map, then export the PDF",
-  "status.searching": "Searching\u2026",
+  "status.ready": "Ready — drag the map, then export the PDF",
+  "status.searching": "Searching…",
   "status.noResults": "No results",
-  "status.exporting": "Exporting PDF \u2014 downloading tiles and rendering\u2026",
-  "status.exported": "PDF downloaded \u2014 print at 100% without \"fit to page\"",
-  "status.generating": "Generating\u2026",
-
+  "status.exporting": "Exporting PDF — downloading tiles and rendering…",
+  "status.exported": "PDF downloaded — print at 100% without \"fit to page\"",
+  "status.generating": "Generating…",
   "msg.error": "Error: ",
   "msg.exportError": "Export error: ",
   "msg.distance": "Distance",
@@ -134,7 +125,6 @@
   "msg.loadError": "Load error",
   "msg.confirmDelete": "Delete \"{0}\"?",
   "msg.gridStep": "step",
-
   "wpIcon.pin": "Pin",
   "wpIcon.flag": "Flag",
   "wpIcon.camp": "Camp",
@@ -150,7 +140,6 @@
   "wpIcon.water": "Water",
   "wpIcon.viewpoint": "Viewpoint",
   "wpIcon.cross": "Cross",
-
   "tool.fileName": "File name:",
   "tool.savedFiles": "Saved files:",
   "tool.noFiles": "No saved files",
@@ -173,7 +162,6 @@
   "msg.toolsLoaded": "Loaded {0} drawings from \"{1}\"",
   "msg.toolsCleared": "All tools cleared",
   "btn.addOnMap": "Add on map",
-
   "weather.title": "Weather",
   "weather.feelsLike": "Feels like",
   "weather.humidity": "Humidity",
@@ -190,7 +178,6 @@
   "weather.heavyrain": "Heavy rain",
   "weather.snow": "Snow",
   "weather.storm": "Thunderstorm",
-
   "section.apiKeys": "API keys",
   "label.owmApiKeyHint": "free key for weather overlay layers",
   "label.owmConfigured": "API key configured",
@@ -226,7 +213,6 @@
   "weather.windLayer": "Wind",
   "weather.pressure": "Pressure",
   "weather.hourDetail": "Hour detail: {0}:00",
-
   "overlay.seamarks": "Seamarks (OpenSeaMap)",
   "overlay.weather": "Weather panel",
   "overlay.hiking": "Hiking trails (Waymarked)",
@@ -243,7 +229,6 @@
   "overlay.owmTemp": "Temperature (OWM)",
   "overlay.owmWind": "Wind (OWM)",
   "overlay.owmPressure": "Pressure (OWM)",
-
   "btn.gpxImport": "Import GPX",
   "btn.gpxExport": "Export GPX",
   "gpx.imported": "GPX imported: {0} waypoints, {1} tracks",
@@ -251,7 +236,6 @@
   "gpx.importError": "GPX import error",
   "gpx.exportError": "GPX export error",
   "gpx.nothingToExport": "Nothing to export — add waypoints or draw a line first",
-
   "elev.show": "Show elevation profile",
   "elev.button": "Elevation",
   "elev.loading": "Loading elevation",
@@ -259,10 +243,15 @@
   "elev.noData": "No elevation data",
   "elev.min": "min",
   "elev.max": "max",
-
   "mag.label": "Decl.",
   "mag.gridConv": "| Grid:",
   "mag.model": "Geomagnetic model",
   "compass.rotateTitle": "Drag to rotate the map; click to reset north",
-  "compass.rotateAria": "Rotate map or reset north"
+  "compass.rotateAria": "Rotate map or reset north",
+  "section.panels": "Panels",
+  "section.system": "System",
+  "hint.print100": "Print at 100% - no fit-to-page",
+  "weather.loading": "Loading forecast…",
+  "weather.error": "Weather service unreachable",
+  "weather.retry": "Retry"
 }

@@ -20,6 +20,18 @@ export const wpMarkerLayer = L.layerGroup();
 wpMarkerLayer.addTo(map);
 
 // ----------------------------------------------------------------
+// Public hook for theme scripts (themes/<id>/theme.js).
+// Loaded after app.js, a theme script may read the live map state to
+// drive its own chrome (readouts, clocks, decorations). This object is
+// part of the theme CONTRACT — see cartograpy/themes/CONTRACT.md.
+// ----------------------------------------------------------------
+window.CartograPy = {
+  map,                                   // the Leaflet map instance
+  version: '1.0',
+  onStatus: null,                        // set to fn(msg) to mirror status line
+};
+
+// ----------------------------------------------------------------
 // DOM references
 // ----------------------------------------------------------------
 const $ = (id) => document.getElementById(id);
@@ -56,7 +68,12 @@ export const $mtbCancel = $('mtbCancel');
 // ----------------------------------------------------------------
 // Status helper + sidebar / mobile tool bar (lightweight UI bits)
 // ----------------------------------------------------------------
-export function status(msg) { $status.textContent = msg; }
+export function status(msg) {
+  $status.textContent = msg;
+  if (typeof window.CartograPy?.onStatus === 'function') {
+    try { window.CartograPy.onStatus(msg); } catch (e) {}
+  }
+}
 
 // Escape user-provided text before interpolating it into innerHTML or
 // Leaflet tooltips/popups (which treat strings as HTML). Waypoint and track

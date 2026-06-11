@@ -1,6 +1,5 @@
 {
   "title": "CartograPy — Stampa Mappe in Scala",
-
   "section.search": "Cerca luogo",
   "section.map": "Mappa",
   "section.overlays": "Overlay",
@@ -8,8 +7,8 @@
   "section.grid": "Griglia",
   "section.tools": "Strumenti",
   "section.waypoints": "Waypoints",
-
   "label.language": "Lingua:",
+  "label.theme": "Tema:",
   "label.scale": "Scala 1 :",
   "label.paper": "Foglio:",
   "label.sheets": "Fogli:",
@@ -23,11 +22,9 @@
   "label.gridType": "Tipo:",
   "label.gridScale": "Scala %:",
   "label.fullLabels": "Valori esatti",
-
   "placeholder.search": "es. Cortina d'Ampezzo",
   "placeholder.wpCoord": "es. 32T 581392 5082439",
   "placeholder.wpName": "es. Gita Lago",
-
   "btn.export": "Esporta PDF",
   "btn.search": "Cerca",
   "btn.menu": "Menu",
@@ -47,18 +44,16 @@
   "btn.importAll": "Importa tutti",
   "btn.confirm": "Conferma",
   "btn.close": "Chiudi",
-
   "tool.ruler.info": "Clicca due punti sulla mappa per misurare la distanza.",
   "tool.ruler.infoTouch": "Tocca due punti sulla mappa per misurare la distanza.",
-  "tool.protractor.info": "Clicca 3 punti: primo braccio \u2192 vertice \u2192 secondo braccio.",
-  "tool.protractor.infoTouch": "Tocca 3 punti: primo braccio \u2192 vertice \u2192 secondo braccio.",
+  "tool.protractor.info": "Clicca 3 punti: primo braccio → vertice → secondo braccio.",
+  "tool.protractor.infoTouch": "Tocca 3 punti: primo braccio → vertice → secondo braccio.",
   "tool.line.info": "Clicca punti per tracciare segmenti. Doppio-click per terminare.",
   "tool.line.infoTouch": "Tocca i punti per tracciare segmenti. Tocca Fatto per terminare.",
   "tool.compass.info": "Clicca il centro, poi muovi per il raggio. Clicca per fissare.",
   "tool.compass.infoTouch": "Tocca il centro, poi tocca il bordo per impostare il raggio.",
   "tool.route.info": "Seleziona 2+ punti, scegli un profilo, poi premi Calcola. Routing tramite BRouter.",
   "tool.route.profile": "Profilo:",
-
   "wp.icon": "Icona:",
   "wp.color": "Colore:",
   "wp.enterCoords": "Inserisci coordinate",
@@ -72,12 +67,11 @@
   "wp.savedFiles": "File salvati:",
   "wp.noFiles": "Nessun file salvato",
   "wp.history": "Cronologia:",
-
-  "source.global": "\u2500\u2500 Globali \u2500\u2500",
-  "source.esri": "\u2500\u2500 Esri \u2500\u2500",
-  "source.cartodb": "\u2500\u2500 CartoDB \u2500\u2500",
-  "source.marine": "\u2500\u2500 Marine \u2500\u2500",
-  "source.regional": "\u2500\u2500 Regionali \u2500\u2500",
+  "source.global": "── Globali ──",
+  "source.esri": "── Esri ──",
+  "source.cartodb": "── CartoDB ──",
+  "source.marine": "── Marine ──",
+  "source.regional": "── Regionali ──",
   "source.emodnet": "EMODnet Batimetria",
   "source.gebco": "GEBCO (batimetria globale)",
   "source.osmHot": "OSM HOT (Umanitario)",
@@ -86,19 +80,16 @@
   "source.esriTopo": "Esri Topo",
   "source.esriSatellite": "Esri Satellite",
   "source.cartodbLight": "CartoDB Positron (chiaro)",
-  "source.geopFrOrtho": "G\u00e9oportail Ortofoto",
+  "source.geopFrOrtho": "Géoportail Ortofoto",
   "source.basemapAtOrtho": "BasemapAT Ortofoto",
-
   "grid.none": "Nessuna griglia",
   "grid.gaussBoaga": "Gauss-Boaga (Italia)",
-
-  "status.ready": "Pronto \u2014 trascina la mappa, poi esporta il PDF",
-  "status.searching": "Ricerca\u2026",
+  "status.ready": "Pronto — trascina la mappa, poi esporta il PDF",
+  "status.searching": "Ricerca…",
   "status.noResults": "Nessun risultato",
-  "status.exporting": "Esportazione PDF in corso \u2014 scaricamento tile e rendering\u2026",
-  "status.exported": "PDF scaricato \u2014 stampare al 100% senza \"adatta alla pagina\"",
-  "status.generating": "Generazione\u2026",
-
+  "status.exporting": "Esportazione PDF in corso — scaricamento tile e rendering…",
+  "status.exported": "PDF scaricato — stampare al 100% senza \"adatta alla pagina\"",
+  "status.generating": "Generazione…",
   "msg.error": "Errore: ",
   "msg.exportError": "Errore export: ",
   "msg.distance": "Distanza",
@@ -134,7 +125,6 @@
   "msg.loadError": "Errore caricamento",
   "msg.confirmDelete": "Eliminare \"{0}\"?",
   "msg.gridStep": "passo",
-
   "wpIcon.pin": "Spillo",
   "wpIcon.flag": "Bandiera",
   "wpIcon.camp": "Campo",
@@ -150,7 +140,6 @@
   "wpIcon.water": "Acqua",
   "wpIcon.viewpoint": "Panorama",
   "wpIcon.cross": "Croce",
-
   "tool.fileName": "Nome file:",
   "tool.savedFiles": "File salvati:",
   "tool.noFiles": "Nessun file salvato",
@@ -173,7 +162,6 @@
   "msg.toolsLoaded": "Caricati {0} disegni da \"{1}\"",
   "msg.toolsCleared": "Tutti gli strumenti cancellati",
   "btn.addOnMap": "Aggiungi sulla mappa",
-
   "weather.title": "Meteo",
   "weather.feelsLike": "Percepita",
   "weather.humidity": "Umidità",
@@ -190,11 +178,10 @@
   "weather.heavyrain": "Pioggia forte",
   "weather.snow": "Neve",
   "weather.storm": "Temporale",
-
   "section.apiKeys": "Chiavi API",
   "label.owmApiKeyHint": "chiave gratuita per i layer meteo sulla mappa",
   "label.owmConfigured": "API key configurata",
-  "label.owmInvalidKey": "API key non valida \u2014 controlla e riprova",
+  "label.owmInvalidKey": "API key non valida — controlla e riprova",
   "traffic.aircraft": "Aerei",
   "traffic.vessels": "Navi",
   "traffic.trains": "Treni",
@@ -226,7 +213,6 @@
   "weather.windLayer": "Vento",
   "weather.pressure": "Pressione",
   "weather.hourDetail": "Dettaglio ora: {0}:00",
-
   "overlay.seamarks": "Segnali nautici (OpenSeaMap)",
   "overlay.weather": "Pannello meteo",
   "overlay.hiking": "Sentieri escursionistici (Waymarked)",
@@ -243,7 +229,6 @@
   "overlay.owmTemp": "Temperatura (OWM)",
   "overlay.owmWind": "Vento (OWM)",
   "overlay.owmPressure": "Pressione (OWM)",
-
   "btn.gpxImport": "Importa GPX",
   "btn.gpxExport": "Esporta GPX",
   "gpx.imported": "GPX importato: {0} waypoint, {1} tracce",
@@ -251,7 +236,6 @@
   "gpx.importError": "Errore importazione GPX",
   "gpx.exportError": "Errore esportazione GPX",
   "gpx.nothingToExport": "Niente da esportare — aggiungi waypoint o disegna una linea",
-
   "elev.show": "Mostra profilo altimetrico",
   "elev.button": "Altimetria",
   "elev.loading": "Caricamento altimetria",
@@ -259,10 +243,15 @@
   "elev.noData": "Nessun dato altimetrico",
   "elev.min": "min",
   "elev.max": "max",
-
   "mag.label": "Decl.",
   "mag.gridConv": "| Grid:",
   "mag.model": "Modello geomagnetico",
   "compass.rotateTitle": "Trascina per ruotare la mappa; clicca per azzerare il nord",
-  "compass.rotateAria": "Ruota la mappa o azzera il nord"
+  "compass.rotateAria": "Ruota la mappa o azzera il nord",
+  "section.panels": "Pannelli",
+  "section.system": "Sistema",
+  "hint.print100": "Stampa al 100% - senza adatta alla pagina",
+  "weather.loading": "Caricamento previsioni…",
+  "weather.error": "Servizio meteo non raggiungibile",
+  "weather.retry": "Riprova"
 }

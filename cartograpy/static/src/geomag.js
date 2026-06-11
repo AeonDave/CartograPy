@@ -25,15 +25,11 @@ function _ensureBadge() {
   if (!mapEl) return null;
   _badge = document.createElement('div');
   _badge.id = 'magBadge';
-  _badge.className = 'mag-badge';
   // Floats over the bottom-right of the map, just above Leaflet's
-  // attribution control. Pointer-events disabled except on hover (tooltip).
-  _badge.style.cssText =
-    'position:absolute; bottom:22px; right:8px; z-index:500; display:none;'
-    + 'padding:2px 8px; border-radius:4px;'
-    + 'background:rgba(254,243,199,0.92); color:#92400e; font-size:11px;'
-    + 'font-weight:600; border:1px solid #fde68a; cursor:help;'
-    + 'box-shadow:0 1px 3px rgba(0,0,0,0.15);';
+  // attribution control. All presentation lives in the theme stylesheet
+  // (.mag-badge) so themes can restyle it.
+  _badge.className = 'mag-badge';
+  _badge.style.display = 'none';
   mapEl.appendChild(_badge);
   return _badge;
 }

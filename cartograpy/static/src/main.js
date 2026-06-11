@@ -24,7 +24,7 @@ import { toggleTool, deactivateAllTools, lineUndo, lineFinish,
          loadToolData } from './tools.js';
 import { populateOverlayPanel, setOverlayDefs,
          buildTileOverlayDef } from './overlays.js';
-import { loadConfig, exportPDF,
+import { loadConfig, loadThemes, exportPDF,
          attachAutoSaveListeners, setupOwmKeyUI } from './config.js';
 import { setupGpxUI } from './gpx.js';
 import { initMagDisplay } from './geomag.js';
@@ -167,18 +167,16 @@ async function refreshToolFileList() {
     const res = await fetch('/api/tools/list');
     const files = await res.json();
     if (!files.length) {
-      list.innerHTML = `<div style="font-size:11px;color:#94a3b8;" data-i18n="tool.noFiles">${t('tool.noFiles')}</div>`;
+      list.innerHTML = `<div class="tf-empty" data-i18n="tool.noFiles">${t('tool.noFiles')}</div>`;
       return;
     }
     list.innerHTML = '';
     files.forEach(name => {
       const row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;'
-        + 'padding:3px 6px;margin-bottom:2px;border-radius:4px;font-size:12px;'
-        + 'background:#f1f5f9;cursor:pointer';
+      row.className = 'tf-item';
       const lbl = document.createElement('span');
+      lbl.className = 'tf-name';
       lbl.textContent = name;
-      lbl.style.cssText = 'flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
       lbl.addEventListener('click', async () => {
         try {
           const r = await fetch('/api/tools/load?name=' + encodeURIComponent(name));
@@ -191,10 +189,8 @@ async function refreshToolFileList() {
         } catch (e) { alert(t('msg.loadError') + ': ' + e.message); }
       });
       const del = document.createElement('span');
+      del.className = 'tf-del';
       del.innerHTML = '<i class="fa-solid fa-trash"></i>';
-      del.style.cssText = 'cursor:pointer;margin-left:6px;color:#94a3b8;padding:0 3px;font-size:11px';
-      del.addEventListener('mouseenter', () => del.style.color = '#dc2626');
-      del.addEventListener('mouseleave', () => del.style.color = '#94a3b8');
       del.addEventListener('click', async (ev) => {
         ev.stopPropagation();
         if (!confirm(t('msg.confirmDelete', name))) return;
@@ -209,7 +205,7 @@ async function refreshToolFileList() {
       list.appendChild(row);
     });
   } catch (e) {
-    list.innerHTML = `<div style="color:#dc2626;font-size:11px">Error</div>`;
+    list.innerHTML = `<div class="tf-error">Error</div>`;
   }
 }
 
@@ -320,6 +316,7 @@ initSnap();
 initCompassControl();
 
 loadSources()
+  .then(() => loadThemes())
   .then(() => loadLanguage('en'))
   .then(() => populateOverlayPanel())
   .then(() => loadConfig())

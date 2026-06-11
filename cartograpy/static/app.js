@@ -12,6 +12,12 @@
   // cartograpy/static/src/core.js
   function status(msg) {
     $status.textContent = msg;
+    if (typeof window.CartograPy?.onStatus === "function") {
+      try {
+        window.CartograPy.onStatus(msg);
+      } catch (e) {
+      }
+    }
   }
   function escapeHtml(s) {
     return String(s ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
@@ -40,6 +46,13 @@
       }).setView([44.49, 11.34], 13);
       wpMarkerLayer = L.layerGroup();
       wpMarkerLayer.addTo(map);
+      window.CartograPy = {
+        map,
+        // the Leaflet map instance
+        version: "1.0",
+        onStatus: null
+        // set to fn(msg) to mirror status line
+      };
       $ = (id) => document.getElementById(id);
       $search = $("search");
       $scale = $("scale");
@@ -978,8 +991,7 @@
     }
     const panel = document.createElement("div");
     panel.className = "elev-panel";
-    panel.style.cssText = "flex:1 1 100%;margin-top:4px;padding:4px 6px;background:#fff;border:1px solid #e2e8f0;border-radius:4px;";
-    panel.innerHTML = `<div style="font-size:11px;color:#94a3b8;">${t("elev.loading")}\u2026</div>`;
+    panel.innerHTML = `<div class="elev-note">${t("elev.loading")}\u2026</div>`;
     container.appendChild(panel);
     try {
       const res = await fetch("/api/elevation", {
@@ -991,7 +1003,7 @@
       if (data.error) throw new Error(data.error);
       panel.innerHTML = _renderChart(data.profile, data.stats);
     } catch (e) {
-      panel.innerHTML = `<div style="font-size:11px;color:#dc2626;">${t("elev.error")}: ${e.message}</div>`;
+      panel.innerHTML = `<div class="elev-error">${t("elev.error")}: ${e.message}</div>`;
     }
   }
   var W, H, PAD_L, PAD_R, PAD_T, PAD_B;
@@ -2217,15 +2229,46 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
     const date = $weatherDate.value;
     let url = `/api/weather?lat=${lat}&lon=${lon}`;
     if (date) url += `&date=${date}`;
+    renderWeatherLoading();
+    $weatherCard.classList.add("visible");
     try {
       const res = await fetch(url);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       state.lastWeatherData = data;
       renderWeather(data);
-      $weatherCard.classList.add("visible");
     } catch (e) {
       console.error("Weather fetch error:", e);
+      renderWeatherError();
+    }
+  }
+  function renderWeatherLoading() {
+    $weatherIcon.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    $weatherTemp.textContent = "\u2026";
+    const $feelsLike = document.getElementById("weatherFeelsLike");
+    if ($feelsLike) $feelsLike.textContent = "";
+    $weatherLabel.textContent = t("weather.loading");
+    const $stats = document.getElementById("weatherStats");
+    if ($stats) $stats.innerHTML = "";
+    $weatherBar.innerHTML = "";
+    $weatherLegend.innerHTML = "";
+    $weatherHourIndicator.classList.remove("visible");
+    $weatherNowIndicator.classList.remove("visible");
+  }
+  function renderWeatherError() {
+    $weatherIcon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+    $weatherTemp.textContent = "\u2014";
+    $weatherLabel.textContent = t("weather.error");
+    const $stats = document.getElementById("weatherStats");
+    if ($stats) {
+      $stats.innerHTML = "";
+      const retry = document.createElement("button");
+      retry.className = "weather-retry";
+      retry.innerHTML = `<i class="fa-solid fa-rotate-right"></i> ${t("weather.retry")}`;
+      retry.addEventListener("click", () => {
+        if (state.weatherLat !== null) fetchWeather(state.weatherLat, state.weatherLon);
+      });
+      $stats.appendChild(retry);
     }
   }
   function renderWeather(data) {
@@ -2619,6 +2662,7 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
     trafficTrainProvider: { el: () => document.getElementById("trafficTrainProvider"), type: "value" },
     trafficRefreshSec: { el: () => document.getElementById("trafficRefreshSec"), type: "value" },
     language: { el: () => document.getElementById("language"), type: "value" },
+    theme: { el: () => document.getElementById("theme"), type: "value" },
     owmApiKey: { el: () => document.getElementById("owmApiKey"), type: "value" },
     aishubUsername: { el: () => document.getElementById("aishubUsername"), type: "value" },
     gtfsRealtimeUrl: { el: () => document.getElementById("gtfsRealtimeUrl"), type: "value" }
@@ -2627,7 +2671,8 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
     const c = map.getCenter();
     const cfg = { lat: c.lat, lon: c.lng, zoom: map.getZoom() };
     for (const [k, def] of Object.entries(CONFIG_FIELDS)) {
-      cfg[k] = def.el()[def.type];
+      const el = def.el();
+      if (el) cfg[k] = el[def.type];
     }
     cfg.searchHistory = searchHistory.slice(0, MAX_HISTORY);
     cfg.overlays = Array.from(selectedOverlays);
@@ -2653,7 +2698,8 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
       const cfg = await res.json();
       if (!cfg || !cfg.scale) return;
       for (const [k, def] of Object.entries(CONFIG_FIELDS)) {
-        if (cfg[k] !== void 0) def.el()[def.type] = cfg[k];
+        const el = def.el();
+        if (el && cfg[k] !== void 0) el[def.type] = cfg[k];
       }
       if (cfg.lat && cfg.lon) map.setView([cfg.lat, cfg.lon], cfg.zoom || 13);
       const bearing2 = Number(cfg.bearing);
@@ -2718,6 +2764,29 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
     [$landscape, $fullLabels].forEach((el) => el.addEventListener("change", scheduleSaveConfig));
     map.on("moveend", scheduleSaveConfig);
     map.on("rotate", scheduleSaveConfig);
+  }
+  async function loadThemes() {
+    const sel = document.getElementById("theme");
+    if (!sel) return;
+    try {
+      const res = await fetch("/api/themes");
+      if (!res.ok) return;
+      const data = await res.json();
+      sel.innerHTML = "";
+      for (const th of data.themes || []) {
+        const opt = document.createElement("option");
+        opt.value = th.id;
+        opt.textContent = th.name || th.id;
+        if (th.description) opt.title = th.description;
+        sel.appendChild(opt);
+      }
+      if (data.active) sel.value = data.active;
+      sel.addEventListener("change", async () => {
+        await saveConfig();
+        location.reload();
+      });
+    } catch (e) {
+    }
   }
   var $owmHidden = document.getElementById("owmApiKey");
   var $owmField = document.getElementById("owmKeyField");
@@ -3196,7 +3265,7 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
     _badge = document.createElement("div");
     _badge.id = "magBadge";
     _badge.className = "mag-badge";
-    _badge.style.cssText = "position:absolute; bottom:22px; right:8px; z-index:500; display:none;padding:2px 8px; border-radius:4px;background:rgba(254,243,199,0.92); color:#92400e; font-size:11px;font-weight:600; border:1px solid #fde68a; cursor:help;box-shadow:0 1px 3px rgba(0,0,0,0.15);";
+    _badge.style.display = "none";
     mapEl.appendChild(_badge);
     return _badge;
   }
@@ -3294,31 +3363,64 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
       return;
     }
     _initBearingInput();
+    function _roseSvg() {
+      let ticks = "";
+      for (let a = 0; a < 360; a += 15) {
+        const main = a % 90 === 0;
+        const mid = !main && a % 45 === 0;
+        const r1 = 33;
+        const r0 = main ? 26.5 : mid ? 28.5 : 30.5;
+        const s = Math.sin(a * Math.PI / 180);
+        const c = Math.cos(a * Math.PI / 180);
+        ticks += `<line x1="${(36 + s * r0).toFixed(2)}" y1="${(36 - c * r0).toFixed(2)}"
+                      x2="${(36 + s * r1).toFixed(2)}" y2="${(36 - c * r1).toFixed(2)}"
+                      class="${main ? "ct-main" : "ct"}"/>`;
+      }
+      const card = (label, a, cls) => {
+        const s = Math.sin(a * Math.PI / 180);
+        const c = Math.cos(a * Math.PI / 180);
+        return `<text x="${(36 + s * 21).toFixed(2)}" y="${(36 - c * 21 + 3.2).toFixed(2)}"
+                    text-anchor="middle" class="cardinal ${cls}">${label}</text>`;
+      };
+      return `
+      <svg viewBox="0 0 72 72" class="compass-svg">
+        <circle cx="36" cy="36" r="34" class="ring"/>
+        <circle cx="36" cy="36" r="34" fill="none" class="ring-edge"/>
+        ${ticks}
+        ${card("N", 0, "cardinal-n")}${card("E", 90, "")}
+        ${card("S", 180, "")}${card("W", 270, "")}
+        <polygon points="36,9 40.5,36 36,31 31.5,36" class="needle-n"/>
+        <polygon points="36,63 31.5,36 36,41 40.5,36" class="needle-s"/>
+        <circle cx="36" cy="36" r="2.6" class="hub"/>
+      </svg>`;
+    }
     const Ctl = L.Control.extend({
       options: { position: "topright" },
       onAdd() {
-        const wrap = L.DomUtil.create("div", "leaflet-bar leaflet-control compass-control");
+        const wrap = L.DomUtil.create("div", "leaflet-control compass-control");
         wrap.title = t("compass.rotateTitle");
         wrap.setAttribute("data-i18n-title", "compass.rotateTitle");
         wrap.innerHTML = `
         <a href="#" class="compass-btn" role="button" aria-label="${t("compass.rotateAria")}">
-          <svg viewBox="0 0 36 36" width="28" height="28" class="compass-svg">
-            <circle cx="18" cy="18" r="16" fill="#fff" stroke="#475569" stroke-width="1.5"/>
-            <text x="18" y="9" text-anchor="middle" font-size="7" font-weight="700"
-                  fill="#dc2626" font-family="sans-serif">N</text>
-            <polygon points="18,5 21,18 18,16 15,18" fill="#dc2626"/>
-            <polygon points="18,31 15,18 18,20 21,18" fill="#475569"/>
-          </svg>
+          ${_roseSvg()}
+          <span class="compass-readout">000\xB0</span>
         </a>`;
         this._btn = wrap.querySelector(".compass-btn");
         if (this._btn) {
           this._btn.setAttribute("data-i18n-aria-label", "compass.rotateAria");
         }
         this._svg = wrap.querySelector(".compass-svg");
+        this._readout = wrap.querySelector(".compass-readout");
         this._dragging = false;
         this._moved = false;
         this._ignoreClick = false;
         this._start = null;
+        this._pointerAngle = (e) => {
+          const rect = this._btn.getBoundingClientRect();
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          return Math.atan2(e.clientX - cx, cy - e.clientY) * 180 / Math.PI;
+        };
         this._onPointerDown = (e) => {
           if (!this._btn) return;
           e.preventDefault();
@@ -3326,6 +3428,8 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
           this._dragging = true;
           this._moved = false;
           this._start = { x: e.clientX, y: e.clientY };
+          this._startAngle = this._pointerAngle(e);
+          this._startBearing = map.getBearing() || 0;
           this._btn.classList.add("rotating");
           document.addEventListener("pointermove", this._onPointerMove);
           document.addEventListener("pointerup", this._onPointerUp);
@@ -3338,11 +3442,8 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
           const dy = e.clientY - this._start.y;
           if (!this._moved && Math.hypot(dx, dy) < 4) return;
           this._moved = true;
-          const rect = this._btn.getBoundingClientRect();
-          const cx = rect.left + rect.width / 2;
-          const cy = rect.top + rect.height / 2;
-          const angle = Math.atan2(e.clientX - cx, cy - e.clientY) * 180 / Math.PI;
-          const bearing2 = (angle + 360) % 360;
+          const delta = this._pointerAngle(e) - this._startAngle;
+          const bearing2 = ((this._startBearing - delta) % 360 + 360) % 360;
           map.setBearing(bearing2);
           this._update();
         };
@@ -3395,8 +3496,12 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
       },
       _update() {
         if (!this._svg) return;
-        const b = map.getBearing() || 0;
+        const b = _normalizeBearing(map.getBearing() || 0) ?? 0;
         this._svg.style.transform = `rotate(${-b}deg)`;
+        if (this._readout) {
+          this._readout.textContent = String(b).padStart(3, "0") + "\xB0";
+          this._readout.classList.toggle("north", b === 0);
+        }
       }
     });
     const ctl = new Ctl();
@@ -3745,16 +3850,16 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
       const res = await fetch("/api/tools/list");
       const files = await res.json();
       if (!files.length) {
-        list.innerHTML = `<div style="font-size:11px;color:#94a3b8;" data-i18n="tool.noFiles">${t("tool.noFiles")}</div>`;
+        list.innerHTML = `<div class="tf-empty" data-i18n="tool.noFiles">${t("tool.noFiles")}</div>`;
         return;
       }
       list.innerHTML = "";
       files.forEach((name) => {
         const row = document.createElement("div");
-        row.style.cssText = "display:flex;align-items:center;justify-content:space-between;padding:3px 6px;margin-bottom:2px;border-radius:4px;font-size:12px;background:#f1f5f9;cursor:pointer";
+        row.className = "tf-item";
         const lbl = document.createElement("span");
+        lbl.className = "tf-name";
         lbl.textContent = name;
-        lbl.style.cssText = "flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
         lbl.addEventListener("click", async () => {
           try {
             const r = await fetch("/api/tools/load?name=" + encodeURIComponent(name));
@@ -3769,10 +3874,8 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
           }
         });
         const del = document.createElement("span");
+        del.className = "tf-del";
         del.innerHTML = '<i class="fa-solid fa-trash"></i>';
-        del.style.cssText = "cursor:pointer;margin-left:6px;color:#94a3b8;padding:0 3px;font-size:11px";
-        del.addEventListener("mouseenter", () => del.style.color = "#dc2626");
-        del.addEventListener("mouseleave", () => del.style.color = "#94a3b8");
         del.addEventListener("click", async (ev) => {
           ev.stopPropagation();
           if (!confirm(t("msg.confirmDelete", name))) return;
@@ -3788,7 +3891,7 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
         list.appendChild(row);
       });
     } catch (e) {
-      list.innerHTML = `<div style="color:#dc2626;font-size:11px">Error</div>`;
+      list.innerHTML = `<div class="tf-error">Error</div>`;
     }
   }
   $btnWpAddOnMap.addEventListener("click", () => {
@@ -3882,7 +3985,7 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
   setupRouteUI();
   initSnap();
   initCompassControl();
-  loadSources().then(() => loadLanguage("en")).then(() => populateOverlayPanel()).then(() => loadConfig()).then(() => {
+  loadSources().then(() => loadThemes()).then(() => loadLanguage("en")).then(() => populateOverlayPanel()).then(() => loadConfig()).then(() => {
     initTraffic();
     initMagDisplay();
     setTimeout(updateOverlays, 500);
