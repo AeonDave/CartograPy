@@ -250,7 +250,7 @@ export async function exportPDF() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `mappa_${params.scale}_${params.paper}.pdf`;
+    a.download = `map_${params.scale}_${params.paper}.pdf`;
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
     status(t('status.exported'));

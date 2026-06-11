@@ -25,6 +25,7 @@ Image.MAX_IMAGE_PIXELS = 400_000_000
 
 from .grid import GRID_SYSTEMS, compute_grid
 from .geomag import compute_geomag
+from .tiles import TILE_SOURCES
 from .utils import (
     PAPER_SIZES,
     TILE_SIZE,
@@ -125,8 +126,11 @@ def export_map_pdf(
     text_factor = _ts / 25.0 * 1.5
     effective_mpp = target_mpp * text_factor
 
-    best_z = 18
-    for z in range(1, 19):
+    # Never request zoom levels the source does not serve — beyond max_zoom
+    # every tile 404s and the map comes out as grey placeholders.
+    source_max_z = min(18, int(TILE_SOURCES.get(source_name, {}).get("max_zoom", 18)))
+    best_z = source_max_z
+    for z in range(1, source_max_z + 1):
         if ground_resolution(center_lat, z) <= effective_mpp:
             best_z = z
             break
@@ -168,7 +172,6 @@ def export_map_pdf(
     page_w = int(round(pw_mm / 25.4 * dpi))
     page_h = int(round(ph_mm / 25.4 * dpi))
     margin_px = int(round(margins_mm / 25.4 * dpi))
-    overlap_px = int(round(overlap_mm / 25.4 * dpi * (img_w / (map_w_mm / 25.4 * dpi))))
     # overlap in image pixels: overlap_mm maps to this many pixels in map image
     ovlp_img_px_w = int(round(overlap_mm / map_w_mm * img_w))
     ovlp_img_px_h = int(round(overlap_mm / map_h_mm * img_h))

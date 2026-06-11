@@ -36,7 +36,7 @@ class LauncherApp:
         self.event_queue: queue.Queue[tuple[str, str]] = queue.Queue()
         self.exit_when_stopped = False
         self.server_running = False
-        self.tray_icon: pystray.Icon | None = None if pystray else None
+        self.tray_icon = None  # pystray.Icon | None
 
         self.root = tk.Tk()
         self.root.title("CartograPy Launcher")

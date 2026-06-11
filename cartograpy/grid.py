@@ -25,9 +25,16 @@ from __future__ import annotations
 
 import math
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from functools import lru_cache
 
 from pyproj import Transformer
+
+
+@lru_cache(maxsize=64)
+def _transformer(src: str, dst: str) -> Transformer:
+    """Cached pyproj transformer — creation costs tens of ms per call."""
+    return Transformer.from_crs(src, dst, always_xy=True)
 
 
 # ------------------------------------------------------------------
@@ -128,8 +135,8 @@ def compute_utm_grid(
     epsg = utm_epsg(center_lat, center_lon)
     zone = utm_zone(center_lon)
 
-    to_utm = Transformer.from_crs("EPSG:4326", f"EPSG:{epsg}", always_xy=True)
-    to_wgs = Transformer.from_crs(f"EPSG:{epsg}", "EPSG:4326", always_xy=True)
+    to_utm = _transformer("EPSG:4326", f"EPSG:{epsg}")
+    to_wgs = _transformer(f"EPSG:{epsg}", "EPSG:4326")
 
     # Centre in UTM
     cx, cy = to_utm.transform(center_lon, center_lat)
@@ -242,93 +249,8 @@ def compute_latlon_dd_grid(
 
 
 # ==================================================================
-# Lat/Lon — Degrees + Decimal Minutes
-# ==================================================================
-
-def _auto_dm_spacing_minutes(scale: int) -> float:
-    """Grid spacing in arc-minutes."""
-    if scale <= 5_000:
-        return 0.1
-    if scale <= 10_000:
-        return 0.2
-    if scale <= 25_000:
-        return 0.5
-    if scale <= 50_000:
-        return 1.0
-    if scale <= 100_000:
-        return 2.0
-    return 5.0
-
-
-def _dd_to_dm(dd: float) -> str:
-    """Decimal degrees → D°M.m′ label."""
-    sign = "-" if dd < 0 else ""
-    dd = abs(dd)
-    d = int(dd)
-    m = (dd - d) * 60
-    return f"{sign}{d}°{m:05.2f}′"
-
-
-def compute_latlon_dm_grid(
-    center_lat: float, center_lon: float,
-    width_m: float, height_m: float, scale: int,
-) -> GridInfo:
-    """Grid of lat/lon lines labelled in degrees + decimal minutes."""
-    sp_min = _auto_dm_spacing_minutes(scale)
-    spacing = sp_min / 60.0  # convert to degrees
-
-    d_lat = height_m / 111320.0
-    d_lon = width_m / (111320.0 * max(math.cos(math.radians(center_lat)), 0.01))
-    margin = spacing
-
-    lat_lo = center_lat - d_lat / 2 - margin
-    lat_hi = center_lat + d_lat / 2 + margin
-    lon_lo = center_lon - d_lon / 2 - margin
-    lon_hi = center_lon + d_lon / 2 + margin
-
-    lines: list[GridLine] = []
-
-    lon = math.floor(lon_lo / spacing) * spacing
-    while lon <= lon_hi:
-        lines.append(GridLine(lat_lo, lon, lat_hi, lon, _dd_to_dm(lon), lon, "v"))
-        lon += spacing
-
-    lat = math.floor(lat_lo / spacing) * spacing
-    while lat <= lat_hi:
-        lines.append(GridLine(lat, lon_lo, lat, lon_hi, _dd_to_dm(lat), lat, "h"))
-        lat += spacing
-
-    return GridInfo(
-        system="latlon_dm", zone="WGS-84", epsg=0,
-        center_easting=center_lon, center_northing=center_lat,
-        lines=lines,
-    )
-
-
-# ==================================================================
 # MGRS — uses UTM grid but with MGRS-style labels
 # ==================================================================
-
-def _utm_to_mgrs_label(easting: float, northing: float, zone: int, north: bool) -> str:
-    """Simplified MGRS label from UTM coordinates (100km square + 4-digit)."""
-    # Column letter: based on easting, cycles A-H / J-R / S-Z per zone set
-    set_idx = (zone - 1) % 3
-    col_letters = "ABCDEFGHJKLMNPQRSTUVWXYZ"  # 24 letters (no I, O)
-    col_offset = set_idx * 8
-    e100k = int(easting / 100_000)
-    col_letter = col_letters[(col_offset + e100k - 1) % len(col_letters)]
-
-    # Row letter: based on northing, cycles A-V (20 letters)
-    row_letters = "ABCDEFGHJKLMNPQRSTUV"
-    row_offset = 0 if (zone % 2 == 1) else 5
-    n100k = int(northing / 100_000) % 20
-    row_letter = row_letters[(row_offset + n100k) % len(row_letters)]
-
-    e_4 = int(easting % 100_000) // 10
-    n_4 = int(northing % 100_000) // 10
-
-    return f"{zone}{col_letter}{row_letter} {e_4:04d} {n_4:04d}"
-
 
 def compute_mgrs_grid(
     center_lat: float, center_lon: float,
@@ -337,10 +259,9 @@ def compute_mgrs_grid(
     """UTM-based grid with MGRS labels."""
     epsg = utm_epsg(center_lat, center_lon)
     zone = utm_zone(center_lon)
-    north = center_lat >= 0
 
-    to_utm = Transformer.from_crs("EPSG:4326", f"EPSG:{epsg}", always_xy=True)
-    to_wgs = Transformer.from_crs(f"EPSG:{epsg}", "EPSG:4326", always_xy=True)
+    to_utm = _transformer("EPSG:4326", f"EPSG:{epsg}")
+    to_wgs = _transformer(f"EPSG:{epsg}", "EPSG:4326")
 
     cx, cy = to_utm.transform(center_lon, center_lat)
     x_lo = cx - width_m / 2 - spacing_m
@@ -390,8 +311,8 @@ def _compute_projected_grid(
     epsg: int, system: str, zone_label: str,
 ) -> GridInfo:
     """Generic grid for any projected CRS given by EPSG code."""
-    to_proj = Transformer.from_crs("EPSG:4326", f"EPSG:{epsg}", always_xy=True)
-    to_wgs = Transformer.from_crs(f"EPSG:{epsg}", "EPSG:4326", always_xy=True)
+    to_proj = _transformer("EPSG:4326", f"EPSG:{epsg}")
+    to_wgs = _transformer(f"EPSG:{epsg}", "EPSG:4326")
 
     cx, cy = to_proj.transform(center_lon, center_lat)
     x_lo = cx - width_m / 2 - spacing_m
@@ -483,8 +404,6 @@ def _full_label(gl: GridLine, system: str) -> str:
     """Format full_value as a non-abbreviated label."""
     if system in ("latlon_dd", "latlon"):
         return f"{gl.full_value:.6f}°"
-    if system in ("latlon_dm",):
-        return _dd_to_dm(gl.full_value)
     # Projected grids: metres
     return str(int(round(gl.full_value)))
 
@@ -618,7 +537,7 @@ def parse_latlon_auto(raw: str) -> tuple[float, float]:
 
 
 def _transform_to_wgs84(epsg: int, easting: float, northing: float) -> tuple[float, float]:
-    t = Transformer.from_crs(f"EPSG:{epsg}", "EPSG:4326", always_xy=True)
+    t = _transformer(f"EPSG:{epsg}", "EPSG:4326")
     lon, lat = t.transform(easting, northing)
     return lat, lon
 

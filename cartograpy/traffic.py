@@ -85,6 +85,9 @@ def query_live_traffic(provider: str, bbox: BoundingBox, config: dict[str, Any] 
     ttl = _PROVIDER_TTL[provider]
     cache_key = _cache_key(provider, bbox, cfg)
     now = time.time()
+    # Opportunistic eviction so the cache does not grow without bound.
+    for stale in [k for k, (exp, _) in _CACHE.items() if exp <= now]:
+        _CACHE.pop(stale, None)
     cached = _CACHE.get(cache_key)
     if cached and cached[0] > now:
         payload = dict(cached[1])
@@ -211,7 +214,7 @@ def _fetch_opensky(bbox: BoundingBox) -> list[dict[str, Any]]:
                 "callsign": callsign,
                 "origin_country": _clean_str(row[2]),
                 "on_ground": bool(row[8]),
-                "vertical_rate": _round(_float_or_none(row[11]), 1),
+                "vertical_rate": _round(_float_or_none(row[11]), 1) if len(row) > 11 else None,
                 "squawk": _clean_str(row[14]) if len(row) > 14 else "",
             },
         })

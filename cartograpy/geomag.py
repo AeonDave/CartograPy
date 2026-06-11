@@ -109,7 +109,7 @@ def grid_convergence(lat: float, lon: float, epsg: int | None = None) -> float:
     of the local zone is assumed.
     """
     try:
-        from pyproj import CRS, Transformer
+        from .grid import _transformer
     except ImportError:
         return 0.0
 
@@ -119,9 +119,7 @@ def grid_convergence(lat: float, lon: float, epsg: int | None = None) -> float:
 
     try:
         # Use a tiny offset along the meridian to measure grid-north tilt.
-        crs_geo = CRS.from_epsg(4326)
-        crs_proj = CRS.from_epsg(epsg)
-        to_proj = Transformer.from_crs(crs_geo, crs_proj, always_xy=True)
+        to_proj = _transformer("EPSG:4326", f"EPSG:{epsg}")
         x0, y0 = to_proj.transform(lon, lat)
         # Step ~100 m due true north at this latitude.
         dlat = 100.0 / 111320.0

@@ -1,7 +1,8 @@
 // ==============================================================
 // Search — geocoder, autocomplete, history
 // ==============================================================
-import { map, $search, $results, $resList, status, closeSidebarMobile } from './core.js';
+import { map, $search, $results, $resList, status, escapeHtml,
+         closeSidebarMobile } from './core.js';
 import { state, searchResults, searchHistory, suggestData,
          setSearchResults, setSuggestData,
          selectedOverlays, MAX_HISTORY, MAX_SUGGESTIONS } from './state.js';
@@ -24,7 +25,7 @@ export async function doSearch() {
     if (!data.length) { status(t('status.noResults')); $results.style.display='none'; return; }
     setSearchResults(data);
     $resList.innerHTML = data.map(r =>
-      `<option>${r.name.substring(0,120)}</option>`).join('');
+      `<option>${escapeHtml(r.name.substring(0, 120))}</option>`).join('');
     $results.style.display = 'block';
     $resList.selectedIndex = 0;
     const r = data[0];
@@ -71,7 +72,7 @@ export async function fetchSuggestions(q) {
     setSuggestData(data.slice(0, MAX_SUGGESTIONS));
     const box = document.getElementById('searchSuggestions');
     box.innerHTML = suggestData.map((r, i) =>
-      `<div class="sg-item" data-idx="${i}">${r.name.substring(0, 100)}</div>`
+      `<div class="sg-item" data-idx="${i}">${escapeHtml(r.name.substring(0, 100))}</div>`
     ).join('');
     box.style.display = 'block';
   } catch(e) {
@@ -91,7 +92,7 @@ export function renderHistory() {
   list.innerHTML = searchHistory.map((h, i) =>
     `<div class="hist-item">
        <i class="fa-solid fa-location-dot" style="color:#64748b; font-size:12px;"></i>
-       <span class="hist-name" data-idx="${i}">${h.name}</span>
+       <span class="hist-name" data-idx="${i}">${escapeHtml(h.name)}</span>
        <span class="hist-del" data-idx="${i}"><i class="fa-solid fa-xmark"></i></span>
      </div>`
   ).join('');

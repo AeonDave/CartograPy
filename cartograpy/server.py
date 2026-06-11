@@ -15,7 +15,7 @@ import re
 import tempfile
 import threading
 import webbrowser
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
@@ -45,6 +45,21 @@ _TOOLS_DIR = _DATA / "tools"
 _TOOLS_DIR.mkdir(exist_ok=True)
 
 _SAFE_NAME_RE = re.compile(r'[^a-zA-Z0-9_àèéìòùÀÈÉÌÒÙçÇñÑ -]')
+
+# Server-side caps for export/grid parameters. The frontend enforces the same
+# limits, but the API must not trust the client: oversized values trigger
+# massive tile downloads and multi-GB composites.
+_MAX_SHEETS = 20
+_MIN_DPI, _MAX_DPI = 72, 600
+_MIN_SCALE, _MAX_SCALE = 100, 1_000_000
+
+# The server is multi-threaded; serialize writes to the small JSON files.
+_IO_LOCK = threading.Lock()
+
+# Hosts a browser may legitimately use to reach this local server. Requests
+# with any other Host header (DNS rebinding) or cross-site Origin (CSRF) are
+# rejected. The configured bind host is added at server creation time.
+_LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
 # Source group ordering + i18n keys for the `<select id="source">` optgroups.
 # Adding a new group key here is enough to expose it on the frontend; tile
@@ -102,12 +117,13 @@ def _sanitize_filename(name: str) -> str:
     return _SAFE_NAME_RE.sub('_', name)[:80]
 
 
-def create_server(host: str = "127.0.0.1", port: int = 8271) -> tuple[HTTPServer, str]:
+def create_server(host: str = "127.0.0.1", port: int = 8271) -> tuple[ThreadingHTTPServer, str]:
     """Create the configured HTTP server and return it with its local URL."""
     tc = TileCache()
-    handler_cls = type("H", (_Handler,), {"tile_cache": tc})
+    allowed = _LOCAL_HOSTS | {host.lower()}
+    handler_cls = type("H", (_Handler,), {"tile_cache": tc, "allowed_hosts": allowed})
     try:
-        server = HTTPServer((host, port), handler_cls)
+        server = ThreadingHTTPServer((host, port), handler_cls)
     except OSError as exc:
         raise OSError(
             f"Could not start CartograPy on {host}:{port}. "
@@ -129,16 +145,42 @@ class _Handler(BaseHTTPRequestHandler):
     """Request handler with access to shared ``tile_cache``."""
 
     tile_cache: TileCache  # set via class attribute by the factory
+    allowed_hosts: set[str] = _LOCAL_HOSTS  # overridden by the factory
 
     def log_message(self, fmt, *args):
         # quieter logs
         pass
 
     # ------------------------------------------------------------------
+    # Request validation (DNS rebinding / CSRF)
+    # ------------------------------------------------------------------
+
+    def _request_allowed(self, *, check_origin: bool) -> bool:
+        """Reject requests whose Host or Origin is not this local server."""
+        host = (self.headers.get("Host") or "").rsplit(":", 1)[0]
+        if host.startswith("[") and host.endswith("]"):
+            host = host[1:-1]
+        if host.lower() not in self.allowed_hosts:
+            return False
+        if check_origin:
+            origin = self.headers.get("Origin")
+            if origin and origin.lower() != "null":
+                o_host = (urlparse(origin).hostname or "").lower()
+                if o_host not in self.allowed_hosts:
+                    return False
+        return True
+
+    def _forbidden(self):
+        self._json({"error": "forbidden: cross-origin request rejected"}, 403)
+
+    # ------------------------------------------------------------------
     # Routing
     # ------------------------------------------------------------------
 
     def do_GET(self):
+        if not self._request_allowed(check_origin=False):
+            self._forbidden()
+            return
         parsed = urlparse(self.path)
         path = parsed.path
         qs = parse_qs(parsed.query)
@@ -186,6 +228,9 @@ class _Handler(BaseHTTPRequestHandler):
             self._404()
 
     def do_POST(self):
+        if not self._request_allowed(check_origin=True):
+            self._forbidden()
+            return
         parsed = urlparse(self.path)
         length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length) if length else b"{}"
@@ -260,8 +305,12 @@ class _Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "image/png")
         self.send_header("Content-Length", str(len(data)))
-        # Long-lived cache: tiles are immutable per (source, z, x, y).
-        self.send_header("Cache-Control", "public, max-age=604800")
+        if img.info.get("placeholder"):
+            # Failed download — never let the browser cache the grey tile.
+            self.send_header("Cache-Control", "no-store")
+        else:
+            # Long-lived cache: tiles are immutable per (source, z, x, y).
+            self.send_header("Cache-Control", "public, max-age=604800")
         self.end_headers()
         self.wfile.write(data)
 
@@ -297,10 +346,11 @@ class _Handler(BaseHTTPRequestHandler):
             landscape = qs.get("landscape", ["0"])[0] == "1"
             grid_type = qs.get("grid_type", ["utm"])[0]
             full_labels = qs.get("full_labels", ["0"])[0] == "1"
-            sheets = max(1, int(qs.get("sheets", ["1"])[0]))
+            sheets = max(1, min(_MAX_SHEETS, int(qs.get("sheets", ["1"])[0])))
         except (KeyError, ValueError, IndexError) as exc:
             self._json({"error": f"bad params: {exc}"}, 400)
             return
+        scale = max(_MIN_SCALE, min(_MAX_SCALE, scale))
 
         if grid_type == "none" or grid_type not in GRID_SYSTEMS:
             self._json({"type": "FeatureCollection", "features": [],
@@ -553,7 +603,10 @@ class _Handler(BaseHTTPRequestHandler):
 
     def _handle_config_get(self):
         if _CONFIG_FILE.is_file():
-            self._json(json.loads(_CONFIG_FILE.read_text("utf-8")))
+            try:
+                self._json(json.loads(_CONFIG_FILE.read_text("utf-8")))
+            except (json.JSONDecodeError, OSError):
+                self._json({})
         else:
             self._json({})
 
@@ -570,7 +623,8 @@ class _Handler(BaseHTTPRequestHandler):
                    "lat", "lon", "zoom", "language", "sheets",
                    "owmApiKey", "searchHistory", "overlays"}
         clean = {k: v for k, v in params.items() if k in allowed}
-        _CONFIG_FILE.write_text(json.dumps(clean, ensure_ascii=False, indent=2), "utf-8")
+        with _IO_LOCK:
+            _CONFIG_FILE.write_text(json.dumps(clean, ensure_ascii=False, indent=2), "utf-8")
         self._json({"ok": True})
 
     # -- Waypoint files ---------------------------------------------------
@@ -587,7 +641,8 @@ class _Handler(BaseHTTPRequestHandler):
             return
         safe = _sanitize_filename(name)
         path = _WP_DIR / f"{safe}.json"
-        path.write_text(json.dumps(wps, ensure_ascii=False, indent=2), "utf-8")
+        with _IO_LOCK:
+            path.write_text(json.dumps(wps, ensure_ascii=False, indent=2), "utf-8")
         self._json({"ok": True, "name": safe})
 
     def _handle_wp_load(self, qs):
@@ -600,7 +655,10 @@ class _Handler(BaseHTTPRequestHandler):
         if not path.is_file():
             self._json({"error": "not found"}, 404)
             return
-        self._json(json.loads(path.read_text("utf-8")))
+        try:
+            self._json(json.loads(path.read_text("utf-8")))
+        except (json.JSONDecodeError, OSError) as exc:
+            self._json({"error": f"corrupt file: {exc}"}, 500)
 
     def _handle_wp_delete(self, params):
         name = params.get("name", "").strip()
@@ -627,7 +685,8 @@ class _Handler(BaseHTTPRequestHandler):
             return
         safe = _sanitize_filename(name)
         path = _TOOLS_DIR / f"{safe}.json"
-        path.write_text(json.dumps(drawings, ensure_ascii=False, indent=2), "utf-8")
+        with _IO_LOCK:
+            path.write_text(json.dumps(drawings, ensure_ascii=False, indent=2), "utf-8")
         self._json({"ok": True, "name": safe})
 
     def _handle_tools_load(self, qs):
@@ -640,7 +699,10 @@ class _Handler(BaseHTTPRequestHandler):
         if not path.is_file():
             self._json({"error": "not found"}, 404)
             return
-        self._json(json.loads(path.read_text("utf-8")))
+        try:
+            self._json(json.loads(path.read_text("utf-8")))
+        except (json.JSONDecodeError, OSError) as exc:
+            self._json({"error": f"corrupt file: {exc}"}, 500)
 
     def _handle_tools_delete(self, params):
         name = params.get("name", "").strip()
@@ -672,6 +734,15 @@ class _Handler(BaseHTTPRequestHandler):
         except (KeyError, ValueError) as exc:
             self._json({"error": str(exc)}, 400)
             return
+        if paper not in PAPER_SIZES:
+            self._json({"error": f"unknown paper size: {paper}"}, 400)
+            return
+        if source not in TILE_SOURCES:
+            self._json({"error": f"unknown source: {source}"}, 400)
+            return
+        scale = max(_MIN_SCALE, min(_MAX_SCALE, scale))
+        dpi = max(_MIN_DPI, min(_MAX_DPI, dpi))
+        sheets = min(_MAX_SHEETS, sheets)
 
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
             tmp_path = tmp.name

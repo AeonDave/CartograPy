@@ -331,12 +331,23 @@ TILE_SOURCES: dict[str, dict] = {
 
 _PLACEHOLDER: Image.Image | None = None
 
+# Soft cap for the in-memory tile cache (≈ 100 MB of RGB tiles). The disk
+# cache backs everything, so eviction only costs a re-decode.
+_MEM_MAX_TILES = 512
+
 
 def _placeholder() -> Image.Image:
+    """Grey stand-in for a failed download.
+
+    Marked via ``info["placeholder"]`` so callers can avoid caching it and
+    serve it with no-store headers.
+    """
     global _PLACEHOLDER
     if _PLACEHOLDER is None:
         _PLACEHOLDER = Image.new("RGB", (TILE_SIZE, TILE_SIZE), (220, 220, 220))
-    return _PLACEHOLDER.copy()
+    img = _PLACEHOLDER.copy()
+    img.info["placeholder"] = True
+    return img
 
 
 class TileCache:
@@ -361,25 +372,24 @@ class TileCache:
     def get_tile(self, source: str, z: int, x: int, y: int) -> Image.Image:
         """Return tile image (blocking). Serves from memory → disk → network."""
         key = (source, z, x, y)
-        with self._lock:
-            if key in self._mem:
-                return self._mem[key]
+        cached = self._mem_get(key)
+        if cached is not None:
+            return cached
 
         # Disk
         path = self._disk_path(source, z, x, y)
         if path.exists():
             try:
                 img = Image.open(path).convert("RGB")
-                with self._lock:
-                    self._mem[key] = img
+                self._mem_put(key, img)
                 return img
             except Exception:
                 pass
 
-        # Network
+        # Network — placeholders (failed downloads) are NOT cached, so the
+        # next request retries instead of staying grey until restart.
         img = self._download(source, z, x, y)
-        with self._lock:
-            self._mem[key] = img
+        self._mem_put(key, img)
         return img
 
     def get_tile_async(
@@ -393,17 +403,16 @@ class TileCache:
         """Non-blocking fetch. Returns image if cached, else ``None`` and
         calls *callback(key, image)* from a worker thread when ready."""
         key = (source, z, x, y)
-        with self._lock:
-            if key in self._mem:
-                return self._mem[key]
+        cached = self._mem_get(key)
+        if cached is not None:
+            return cached
 
         # Check disk quickly
         path = self._disk_path(source, z, x, y)
         if path.exists():
             try:
                 img = Image.open(path).convert("RGB")
-                with self._lock:
-                    self._mem[key] = img
+                self._mem_put(key, img)
                 return img
             except Exception:
                 pass
@@ -411,8 +420,7 @@ class TileCache:
         # Submit network fetch
         def _task():
             img = self._download(source, z, x, y)
-            with self._lock:
-                self._mem[key] = img
+            self._mem_put(key, img)
             if callback:
                 callback(key, img)
 
@@ -422,19 +430,38 @@ class TileCache:
     def get_area(
         self, source: str, z: int, x_min: int, y_min: int, x_max: int, y_max: int,
     ) -> Image.Image:
-        """Composite tiles in a rectangle (blocking download)."""
+        """Composite tiles in a rectangle (blocking, parallel download)."""
         cols = x_max - x_min + 1
         rows = y_max - y_min + 1
         result = Image.new("RGB", (cols * TILE_SIZE, rows * TILE_SIZE))
-        for tx in range(x_min, x_max + 1):
-            for ty in range(y_min, y_max + 1):
-                tile = self.get_tile(source, z, tx, ty)
-                result.paste(tile, ((tx - x_min) * TILE_SIZE, (ty - y_min) * TILE_SIZE))
+        futures = {
+            self._pool.submit(self.get_tile, source, z, tx, ty): (tx, ty)
+            for tx in range(x_min, x_max + 1)
+            for ty in range(y_min, y_max + 1)
+        }
+        for fut, (tx, ty) in futures.items():
+            tile = fut.result()
+            result.paste(tile, ((tx - x_min) * TILE_SIZE, (ty - y_min) * TILE_SIZE))
         return result
 
     # ------------------------------------------------------------------
     # Internal
     # ------------------------------------------------------------------
+
+    def _mem_get(self, key: tuple) -> Image.Image | None:
+        with self._lock:
+            img = self._mem.pop(key, None)
+            if img is not None:
+                self._mem[key] = img  # re-insert: LRU position
+            return img
+
+    def _mem_put(self, key: tuple, img: Image.Image) -> None:
+        if img.info.get("placeholder"):
+            return
+        with self._lock:
+            self._mem[key] = img
+            while len(self._mem) > _MEM_MAX_TILES:
+                self._mem.pop(next(iter(self._mem)))
 
     def _disk_path(self, source: str, z: int, x: int, y: int) -> Path:
         return self.cache_dir / source / str(z) / str(x) / f"{y}.png"

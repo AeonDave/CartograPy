@@ -1,7 +1,7 @@
 // ==============================================================
 // Waypoints — markers, list, manual / bulk entry, save/load
 // ==============================================================
-import { map, wpMarkerLayer, $btnWpAddOnMap, $gridType, status,
+import { map, wpMarkerLayer, $btnWpAddOnMap, $gridType, status, escapeHtml,
          closeSidebarMobile, showMobileToolBar, hideMobileToolBar } from './core.js';
 import { state, waypoints, WP_ICONS, WP_COLORS, isTouch } from './state.js';
 import { t } from './i18n.js';
@@ -110,7 +110,8 @@ export function renderWaypointMarkers() {
     const m = L.marker([wp.lat, wp.lng], { icon, interactive: !toolActive }).addTo(wpMarkerLayer);
     if (!toolActive) m.on('click', () => selectWaypoint(wp.id));
     if (wp.name) {
-      m.bindTooltip(wp.name, {
+      // Leaflet tooltips render HTML — escape (names may come from GPX).
+      m.bindTooltip(escapeHtml(wp.name), {
         permanent: true, direction: 'bottom', offset: [0, 4], className: 'wp-label',
       });
     }
@@ -128,7 +129,7 @@ export function renderWaypointList() {
     `<div class="wp-item${wp.id === selectedWpId ? ' selected' : ''}" data-id="${wp.id}">
        <i class="fa-solid ${wp.icon}" style="color:${wp.color}; cursor:pointer;"></i>
        <span class="wp-name" contenteditable="true" data-id="${wp.id}" title="${t('wp.rename')}">`
-    + `${wp.name || (wp.lat.toFixed(5) + ', ' + wp.lng.toFixed(5))}</span>
+    + `${escapeHtml(wp.name) || (wp.lat.toFixed(5) + ', ' + wp.lng.toFixed(5))}</span>
        <span class="wp-del" data-id="${wp.id}"><i class="fa-solid fa-xmark"></i></span>
      </div>`
   ).join('');

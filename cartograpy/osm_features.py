@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import time
 import urllib.request
 from pathlib import Path
@@ -28,13 +29,22 @@ _MAX_AREA_DEG2 = 0.5    # refuse queries larger than ~50×50 km
 _TTL_SEC = 7 * 24 * 3600
 
 
-def _quantise(value: float, step: float = _GRID) -> float:
-    return round(value / step) * step
+def _snap_bbox(s: float, w: float, n: float, e: float,
+               step: float = _GRID) -> tuple[float, float, float, float]:
+    """Expand a bbox outward to the quantisation grid.
+
+    Both the cache key AND the Overpass query use the expanded bbox, so a
+    cached result always covers every raw viewport that maps to the same key.
+    """
+    qs = max(-90.0, math.floor(s / step) * step)
+    qw = max(-180.0, math.floor(w / step) * step)
+    qn = min(90.0, math.ceil(n / step) * step)
+    qe = min(180.0, math.ceil(e / step) * step)
+    return qs, qw, qn, qe
 
 
-def _cache_key(s: float, w: float, n: float, e: float, types: tuple[str, ...]) -> Path:
-    qs = _quantise(s); qw = _quantise(w)
-    qn = _quantise(n); qe = _quantise(e)
+def _cache_key(qs: float, qw: float, qn: float, qe: float,
+               types: tuple[str, ...]) -> Path:
     raw = f"{qs:.4f},{qw:.4f},{qn:.4f},{qe:.4f}|{','.join(types)}"
     h = hashlib.sha1(raw.encode()).hexdigest()[:16]
     return _CACHE_DIR / f"{h}.json"
@@ -102,7 +112,8 @@ def query_features(s: float, w: float, n: float, e: float,
     if (n - s) * (e - w) > _MAX_AREA_DEG2:
         raise ValueError("bbox too large for snap query")
 
-    cache_path = _cache_key(s, w, n, e, types)
+    qs, qw, qn, qe = _snap_bbox(s, w, n, e)
+    cache_path = _cache_key(qs, qw, qn, qe, types)
     if cache_path.exists():
         try:
             age = cache_path.stat().st_mtime
@@ -111,7 +122,7 @@ def query_features(s: float, w: float, n: float, e: float,
         except Exception:
             pass  # fall through to refetch
 
-    body = _build_query(s, w, n, e, types).encode()
+    body = _build_query(qs, qw, qn, qe, types).encode()
     req = urllib.request.Request(
         _OVERPASS, data=body, method="POST",
         headers={"User-Agent": _UA, "Content-Type": "application/x-www-form-urlencoded"},

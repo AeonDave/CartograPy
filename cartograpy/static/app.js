@@ -13,6 +13,9 @@
   function status(msg) {
     $status.textContent = msg;
   }
+  function escapeHtml(s) {
+    return String(s ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+  }
   function closeSidebarMobile() {
     $("sidebar").classList.add("collapsed");
     document.body.classList.add("sidebar-hidden");
@@ -262,7 +265,7 @@
       const m = L.marker([wp.lat, wp.lng], { icon, interactive: !toolActive }).addTo(wpMarkerLayer);
       if (!toolActive) m.on("click", () => selectWaypoint(wp.id));
       if (wp.name) {
-        m.bindTooltip(wp.name, {
+        m.bindTooltip(escapeHtml(wp.name), {
           permanent: true,
           direction: "bottom",
           offset: [0, 4],
@@ -281,7 +284,7 @@
     list.innerHTML = waypoints.map(
       (wp) => `<div class="wp-item${wp.id === selectedWpId ? " selected" : ""}" data-id="${wp.id}">
        <i class="fa-solid ${wp.icon}" style="color:${wp.color}; cursor:pointer;"></i>
-       <span class="wp-name" contenteditable="true" data-id="${wp.id}" title="${t("wp.rename")}">${wp.name || wp.lat.toFixed(5) + ", " + wp.lng.toFixed(5)}</span>
+       <span class="wp-name" contenteditable="true" data-id="${wp.id}" title="${t("wp.rename")}">${escapeHtml(wp.name) || wp.lat.toFixed(5) + ", " + wp.lng.toFixed(5)}</span>
        <span class="wp-del" data-id="${wp.id}"><i class="fa-solid fa-xmark"></i></span>
      </div>`
     ).join("");
@@ -2821,7 +2824,7 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `mappa_${params.scale}_${params.paper}.pdf`;
+      a.download = `map_${params.scale}_${params.paper}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -2967,7 +2970,7 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
         return;
       }
       setSearchResults(data);
-      $resList.innerHTML = data.map((r2) => `<option>${r2.name.substring(0, 120)}</option>`).join("");
+      $resList.innerHTML = data.map((r2) => `<option>${escapeHtml(r2.name.substring(0, 120))}</option>`).join("");
       $results.style.display = "block";
       $resList.selectedIndex = 0;
       const r = data[0];
@@ -3018,7 +3021,7 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
       setSuggestData(data.slice(0, MAX_SUGGESTIONS));
       const box = document.getElementById("searchSuggestions");
       box.innerHTML = suggestData.map(
-        (r, i) => `<div class="sg-item" data-idx="${i}">${r.name.substring(0, 100)}</div>`
+        (r, i) => `<div class="sg-item" data-idx="${i}">${escapeHtml(r.name.substring(0, 100))}</div>`
       ).join("");
       box.style.display = "block";
     } catch (e) {
@@ -3039,7 +3042,7 @@ ${t("msg.circumference")}: ${formatDist(circumf)} | ${t("msg.area")}: ${formatAr
     list.innerHTML = searchHistory.map(
       (h, i) => `<div class="hist-item">
        <i class="fa-solid fa-location-dot" style="color:#64748b; font-size:12px;"></i>
-       <span class="hist-name" data-idx="${i}">${h.name}</span>
+       <span class="hist-name" data-idx="${i}">${escapeHtml(h.name)}</span>
        <span class="hist-del" data-idx="${i}"><i class="fa-solid fa-xmark"></i></span>
      </div>`
     ).join("");

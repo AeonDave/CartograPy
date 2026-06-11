@@ -58,6 +58,15 @@ export const $mtbCancel = $('mtbCancel');
 // ----------------------------------------------------------------
 export function status(msg) { $status.textContent = msg; }
 
+// Escape user-provided text before interpolating it into innerHTML or
+// Leaflet tooltips/popups (which treat strings as HTML). Waypoint and track
+// names can come from imported GPX files, i.e. untrusted input.
+export function escapeHtml(s) {
+  return String(s ?? '')
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+}
+
 export function closeSidebarMobile() {
   $('sidebar').classList.add('collapsed');
   document.body.classList.add('sidebar-hidden');
